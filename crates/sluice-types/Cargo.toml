@@ -1,0 +1,15 @@
+[package]
+name = "sluice-types"
+version = "0.0.0"
+description = "Sluice's UI-agnostic value types (the connection/feed/decision types the Tauri app maps Sluice-engine events into)."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "sluice_types"
+path = "src/lib.rs"
+
+# No dependencies: these are plain value types. (The engine's wire contract lives in sluice-proto.)
+[dependencies]

@@ -1,0 +1,8 @@
+# Pin the toolchain so laptop -> workstation builds are identical (see the repo
+# conventions). Bump deliberately, in its own commit, when we want a newer compiler.
+[toolchain]
+# Bumped 1.85 -> 1.88 (Tauri tree) -> 1.89 (tauri-plugin-notification → notify-rust 4.18
+# requires rustc >= 1.89).
+channel = "1.89.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

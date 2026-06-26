@@ -1,0 +1,17 @@
+# sluice-proto — generated gRPC stubs for the Sluice engine↔UI contract (sluice.proto).
+# A member of the root workspace (so sluice-ui can depend on it), but with EXPLICIT version
+# pins rather than workspace inheritance, so the *detached* engine loader can also path-dep it
+# cross-workspace without needing the root's [workspace.dependencies]. Versions mirror the
+# root pins (tonic 0.12 / prost 0.13).
+[package]
+name = "sluice-proto"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+tonic = "0.12"
+prost = "0.13"
+
+[build-dependencies]
+tonic-build = "0.12"

@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sluice</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header id="topbar">
+      <div class="topbar-row">
+        <div class="brand">
+          <svg class="brand-icon" viewBox="0 0 256 256" aria-hidden="true">
+            <rect x="9.5" y="9.5" width="237" height="237" rx="46" fill="#181a26" />
+            <circle cx="127.5" cy="127.5" r="82" fill="none" stroke="#2f6fed" stroke-width="8" />
+            <circle cx="127.5" cy="127.5" r="54" fill="none" stroke="#2f6fed" stroke-width="8" />
+            <circle cx="127.5" cy="127.5" r="18" fill="#b4cdff" />
+          </svg>
+          Sluice<span class="sub">network activity</span>
+        </div>
+        <span id="paused" class="paused hidden">⏸ paused</span>
+      </div>
+      <div class="topbar-row topbar-row2">
+        <span id="engine" class="engine off" title="">
+          <span class="dot"></span><span id="engine-text">engine: …</span>
+        </span>
+        <span class="vsep"></span>
+        <div class="counts">
+          <button type="button" class="count new" aria-pressed="false"><b id="c-new">0</b> new</button>
+          <button type="button" class="count pending" aria-pressed="false"><b id="c-pending">0</b> pending</button>
+          <button type="button" class="count allowed" aria-pressed="false"><b id="c-allowed">0</b> allowed</button>
+          <button type="button" class="count blocked" aria-pressed="false"><b id="c-blocked">0</b> blocked</button>
+        </div>
+      </div>
+    </header>
+
+    <section id="bwdock" class="bwdock">
+      <div class="bwdock-head" id="bw-head">
+        <button id="bw-chevron" class="bw-chevron" title="Collapse / expand the graph" aria-expanded="true">▾</button>
+        <span class="bwdock-title">Bandwidth</span>
+        <span class="bw-cur"><span class="bw-dot rx"></span>&darr; <b id="bw-rx">0 bps</b></span>
+        <span class="bw-cur"><span class="bw-dot tx"></span>&uarr; <b id="bw-tx">0 bps</b></span>
+        <select id="bw-window" title="Time window">
+          <option value="60">1 min</option>
+          <option value="300" selected>5 min</option>
+          <option value="900">15 min</option>
+        </select>
+      </div>
+      <canvas id="bw-canvas" class="bw-canvas"></canvas>
+    </section>
+
+    <main>
+      <nav id="rail">
+        <button class="rail-item active" data-rail="feed" type="button"><span class="ic">≣</span> Feed</button>
+        <button class="rail-item" data-rail="usage" type="button"><span class="ic">▥</span> Usage</button>
+        <button class="rail-item" data-rail="apps" type="button"><span class="ic">▦</span> Apps</button>
+        <button class="rail-item" data-rail="dests" type="button"><span class="ic">◎</span> Destinations</button>
+        <button class="rail-item" data-rail="security" type="button"><span class="ic">⛨</span> Security <span id="sec-badge" class="sec-badge hidden">0</span></button>
+        <button class="rail-item" data-rail="inbound" type="button"><span class="ic">⬇</span> Inbound</button>
+        <div class="rail-sep"></div>
+        <button id="clear-history" class="rail-item" type="button"><span class="ic">⌫</span> Clear history</button>
+        <button class="rail-item" data-rail="settings" type="button"><span class="ic">⚙</span> Settings</button>
+      </nav>
+      <div id="content">
+        <section class="view active" data-view="feed">
+          <div class="feed-grid">
+            <section class="feed-col">
+              <div class="toolbar">
+                <input id="filter" type="text" placeholder="Filter by process or host…" />
+                <select id="window" title="Time window">
+                  <option value="live">Live</option>
+                  <option value="1h">Last hour</option>
+                  <option value="today">Today</option>
+                  <option value="7d">Last 7 days</option>
+                </select>
+                <button id="groupby" type="button" class="toggle-btn" aria-pressed="false" title="Group connections by their launching app/project">Group</button>
+                <button id="hide-dns" type="button" class="toggle-btn" aria-pressed="false" title="Hide DNS lookups (port 53/853) so the feed shows real connections">Hide DNS</button>
+                <button id="hide-inbound" type="button" class="toggle-btn" aria-pressed="false" title="Hide inbound connections so the feed shows only outbound">Hide inbound</button>
+                <span class="filters-wrap">
+                  <button id="filters-btn" type="button" class="toggle-btn" aria-pressed="false" title="More filters: protocol, category, local traffic">Filters ▾ <span id="filters-count" class="count-badge hidden">0</span></button>
+                  <div id="filters-pop" class="filters-pop hidden">
+                    <div class="fpop-sec">
+                      <div class="fpop-h">Protocol</div>
+                      <div class="chips" id="proto-chips">
+                        <button class="chip" type="button" data-proto="tcp">TCP</button>
+                        <button class="chip" type="button" data-proto="udp">UDP</button>
+                        <button class="chip" type="button" data-proto="icmp">ICMP</button>
+                        <button class="chip" type="button" data-proto="other">Other</button>
+                      </div>
+                    </div>
+                    <div class="fpop-sec">
+                      <div class="fpop-h">Category</div>
+                      <div class="chips" id="cat-chips">
+                        <button class="chip" type="button" data-cat="web">Web</button>
+                        <button class="chip" type="button" data-cat="dns">DNS</button>
+                        <button class="chip" type="button" data-cat="ssh">SSH</button>
+                        <button class="chip" type="button" data-cat="mail">Mail</button>
+                        <button class="chip" type="button" data-cat="db">DB</button>
+                        <button class="chip" type="button" data-cat="vpn">VPN</button>
+                        <button class="chip" type="button" data-cat="ntp">NTP</button>
+                        <button class="chip" type="button" data-cat="other">Other</button>
+                      </div>
+                    </div>
+                    <label class="fpop-toggle"><input type="checkbox" id="hide-local" /> Hide local &amp; loopback</label>
+                  </div>
+                </span>
+                <button id="toggle-all" class="hidden" title="Collapse / expand all groups">Collapse all</button>
+                <span class="feed-refresh">
+                  <span id="feed-status" class="feed-status st-live"><span class="dot"></span><span id="feed-status-text">live</span></span>
+                  <button id="feed-pause" type="button" class="toggle-btn" aria-pressed="false" title="Pause the feed — stop new rows appearing while you read">⏸ Pause</button>
+                  <button id="feed-refresh-now" type="button" class="toggle-btn" title="Refresh now — show the latest (and any buffered rows) immediately">↻</button>
+                  <select id="feed-interval" title="How often the live feed updates">
+                    <option value="0">Realtime</option>
+                    <option value="2000">Every 2s</option>
+                    <option value="5000">Every 5s</option>
+                    <option value="10000">Every 10s</option>
+                    <option value="30000">Every 30s</option>
+                  </select>
+                </span>
+              </div>
+              <div id="empty" class="empty">
+                Waiting for connections… start the Sluice engine and trigger some traffic.
+              </div>
+              <ul id="feed"></ul>
+            </section>
+            <aside class="rules-col">
+              <div class="rules-head">Firewall rules <span id="rules-count" class="muted">(0)</span></div>
+              <div id="rules-empty" class="muted small">
+                Existing firewall rules (and ones you set) appear here — including system defaults like
+                the localhost allows — so you can see what's allowed/blocked and remove your own.
+              </div>
+              <ul id="rules-list"></ul>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view pad" data-view="usage">
+          <div class="view-head">
+            <h2>Usage — top talkers</h2>
+            <p class="muted small">
+              Most-active destinations by <b>connection count</b> for the selected window. (Counts are
+              connections, not bytes — the engine reports connection counts, not data volume.)
+            </p>
+          </div>
+          <div class="usage-controls">
+            <input id="usage-filter" class="view-search" type="text" placeholder="Filter hosts…" />
+            <select id="usage-window" title="Time window">
+              <option value="1h">Last hour</option>
+              <option value="today">Today</option>
+              <option value="7d" selected>Last 7 days</option>
+              <option value="all">All time</option>
+            </select>
+          </div>
+          <div class="usage-scroll">
+            <table class="usage-table">
+              <thead>
+                <tr>
+                  <th data-sort="name">Name</th>
+                  <th data-sort="count" class="num">Conns</th>
+                  <th data-sort="allowed" class="num">Allowed</th>
+                  <th data-sort="blocked" class="num">Blocked</th>
+                  <th data-sort="last_ms" class="num">Last seen</th>
+                </tr>
+              </thead>
+              <tbody id="usage-body"></tbody>
+            </table>
+          </div>
+          <div id="usage-empty" class="muted small hidden">No activity recorded for this window.</div>
+        </section>
+
+        <section class="view pad" data-view="apps">
+          <div class="view-head">
+            <h2>Apps — network permissions</h2>
+            <p class="muted small">
+              Every app that's reached the network. Expand an app for per-host control. (Usage is
+              the activity view; this is the permissions view.)
+            </p>
+          </div>
+          <input id="apps-filter" class="view-search" type="text" placeholder="Filter apps…" />
+          <div class="view-sort"><label for="apps-sort">Sort</label>
+            <select id="apps-sort">
+              <option value="recent">Most recent</option>
+              <option value="conns">Connections</option>
+              <option value="hosts">Hosts</option>
+              <option value="name">Name</option>
+            </select>
+          </div>
+          <ul id="apps-list" class="applist"></ul>
+          <div id="apps-empty" class="muted small hidden">No apps have made network connections yet.</div>
+        </section>
+
+        <section class="view pad" data-view="dests">
+          <div class="view-head">
+            <h2>Destinations — network permissions</h2>
+            <p class="muted small">
+              Every destination reached. Posture comes from the engine's rules — a destination is
+              <b>blocked</b> when a rule denies one of its IPs. Expand for the apps that reached it,
+              and to allow/block.
+            </p>
+          </div>
+          <input id="dests-filter" class="view-search" type="text" placeholder="Filter destinations…" />
+          <div class="view-sort"><label for="dests-sort">Sort</label>
+            <select id="dests-sort">
+              <option value="recent">Most recent</option>
+              <option value="conns">Connections</option>
+              <option value="apps">Apps</option>
+              <option value="name">Name</option>
+              <option value="blocked">Blocked first</option>
+            </select>
+          </div>
+          <ul id="dests-list" class="applist"></ul>
+          <div id="dests-empty" class="muted small hidden">No destinations recorded yet.</div>
+        </section>
+
+        <section class="view pad" data-view="security">
+          <div class="view-head">
+            <h2>Security events</h2>
+            <p class="muted small">
+              New-app activity and engine alerts, newest first. Sourced from Sluice's new-app
+              detection.
+            </p>
+          </div>
+          <input id="sec-filter" class="view-search" type="text" placeholder="Filter events…" />
+          <div class="view-sort"><label for="sec-sort">Sort</label>
+            <select id="sec-sort">
+              <option value="recent">Most recent</option>
+              <option value="oldest">Oldest</option>
+              <option value="severity">Severity</option>
+              <option value="type">Type</option>
+            </select>
+          </div>
+          <ul id="sec-list" class="applist"></ul>
+          <div id="sec-empty" class="muted small hidden">No security events recorded yet.</div>
+          <div class="view-actions"><button id="sec-clear">Clear</button></div>
+        </section>
+
+        <section class="view pad" data-view="inbound">
+          <div class="view-head">
+            <h2>Inbound — connections into this machine</h2>
+            <p class="muted small">
+              Filter connections <em>into</em> this machine. In <b>Enforce</b> mode, inbound is
+              default-deny except your allow-list (plus established replies + loopback, always).
+              You manage what's allowed — including SSH. Stopping the engine reopens inbound.
+            </p>
+          </div>
+          <div class="set-row">
+            <div>
+              <div class="set-t">Mode</div>
+              <div class="set-d" id="inb-mode-d">Observe — inbound is watched but not blocked.</div>
+            </div>
+            <button id="inb-toggle" class="toggle-btn" type="button" aria-pressed="false">Observe</button>
+          </div>
+          <div class="set-sect">
+            <div class="set-sect-h">Allowed inbound ports</div>
+            <div class="prof-save">
+              <select id="inb-proto">
+                <option value="tcp">TCP</option>
+                <option value="udp">UDP</option>
+              </select>
+              <input id="inb-port" type="number" min="1" max="65535" placeholder="Port (e.g. 22)" />
+              <button id="inb-add">Allow</button>
+            </div>
+            <ul id="inb-list" class="applist"></ul>
+            <div id="inb-empty" class="muted small hidden">No ports allowed — in Enforce mode, all new inbound (except replies/loopback) is blocked.</div>
+          </div>
+        </section>
+
+        <section class="view pad" data-view="settings">
+          <div class="view-head">
+            <h2>Settings</h2>
+            <p class="muted small">
+              Sluice is quiet by default — it makes no network connections except the ones you turn on
+              below.
+            </p>
+          </div>
+          <div class="set-sect">
+            <div class="set-sect-h">Feed &amp; history</div>
+            <div class="set-row">
+              <div>
+                <div class="set-t">Keep feed history for</div>
+                <div class="set-d">Older entries are removed automatically. Stored locally only.</div>
+              </div>
+              <select id="set-retention">
+                <option value="1">24 hours</option>
+                <option value="7">7 days</option>
+                <option value="30" selected>30 days</option>
+                <option value="90">90 days</option>
+                <option value="0">Forever</option>
+              </select>
+            </div>
+          </div>
+          <div class="set-sect">
+            <div class="set-sect-h">Display</div>
+            <div class="set-row">
+              <div>
+                <div class="set-t">Bandwidth units</div>
+                <div class="set-d">Show throughput in bits/sec or bytes/sec.</div>
+              </div>
+              <select id="set-bwunits">
+                <option value="bits">Bits (bps)</option>
+                <option value="bytes">Bytes (B/s)</option>
+              </select>
+            </div>
+            <div class="set-row">
+              <div>
+                <div class="set-t">Inbound-connection color</div>
+                <div class="set-d">Color of the inbound pill on connection rows.</div>
+              </div>
+              <input type="color" id="set-incolor" value="#2563eb" title="Inbound pill color" />
+            </div>
+          </div>
+          <div class="set-sect">
+            <div class="set-sect-h">Updates</div>
+            <div class="set-disclose">
+              ⚠ Updates are the only feature that reaches the network. Everything here is off by
+              default and disclosed.
+            </div>
+            <div class="set-row">
+              <div>
+                <div class="set-t">Current version</div>
+                <div class="set-d mono">Sluice 0.1.5 · up to date</div>
+              </div>
+              <button type="button">Check for updates</button>
+            </div>
+            <div class="set-row">
+              <div>
+                <div class="set-t">Automatically check for updates</div>
+                <div class="set-d">Off by default.</div>
+              </div>
+              <button class="toggle-btn swbtn" type="button" aria-pressed="false">Off</button>
+            </div>
+            <div class="set-row">
+              <div>
+                <div class="set-t">Update source</div>
+                <div class="set-d">Where updates are fetched from (signed releases).</div>
+              </div>
+              <span class="mono muted small">tollkeep.app/releases</span>
+            </div>
+          </div>
+          <div class="muted small">
+            These controls are placeholders — wired up in tasks #32 (retention) and #33 (updates).
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div id="confirm" class="modal hidden">
+      <div class="card">
+        <div class="modal-title" id="confirm-title">Confirm</div>
+        <div class="modal-body" id="confirm-text"></div>
+        <div id="confirm-form" class="modal-form hidden">
+          <label
+            >Scope
+            <select id="confirm-scope">
+              <option value="app_host">This app → this host (any port)</option>
+              <option value="connection">This exact connection (app + host + port)</option>
+              <option value="app_any">This app → any host</option>
+              <option value="host_any">This host → any app</option>
+            </select>
+          </label>
+          <label
+            >Duration
+            <select id="confirm-duration">
+              <option value="always">Permanent</option>
+              <option value="once">Once</option>
+              <option value="restart">Until reboot</option>
+            </select>
+          </label>
+          <div id="confirm-suggest" class="suggest hidden"></div>
+          <div id="confirm-preview" class="preview"></div>
+        </div>
+        <div class="modal-actions">
+          <button id="confirm-cancel">Cancel</button>
+          <button id="confirm-ok">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="appmodal" class="modal hidden">
+      <div class="card big">
+        <div class="modal-title" id="appmodal-title">App</div>
+        <div class="muted small" id="appmodal-sub"></div>
+        <div class="appmodal-desc" id="appmodal-desc"></div>
+        <ul id="appmodal-list" class="applist"></ul>
+        <div class="modal-actions">
+          <button id="appmodal-close">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="main.js"></script>
+  </body>
+</html>

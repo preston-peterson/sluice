@@ -1,0 +1,6 @@
+# The eBPF crate must build on nightly with rust-src so `-Z build-std=core` can compile
+# core for `bpfel-unknown-none`. This is intentionally separate from the repo-root 1.89 pin
+# (which is for the host-target sluice crates); the BPF object is a different world.
+[toolchain]
+channel = "nightly"
+components = ["rust-src", "rustfmt", "clippy"]

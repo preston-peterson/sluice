@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissions for the Sluice main window: core defaults plus the event API (so the webview can listen for `feed-event` and invoke the `resolve` command).",
+  "windows": ["main"],
+  "permissions": ["core:default", "core:event:default", "notification:default"]
+}

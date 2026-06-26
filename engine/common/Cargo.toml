@@ -1,0 +1,13 @@
+# sluice-common — the wire/ABI types shared between the eBPF program and the userspace
+# loader. no_std + no external deps so it compiles for both the host target and the
+# `bpfel-unknown-none` BPF target. Its own [workspace] table detaches it from the repo-root
+# sluice workspace (engine/ is the seed of the future privileged engine; DEC-010).
+[package]
+name = "sluice-common"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+
+[workspace]

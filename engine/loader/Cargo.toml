@@ -1,0 +1,29 @@
+# sluice-engine — the userspace loader for the E0 spike. Loads the eBPF object, attaches
+# both connect hooks to the cgroup-v2 root, and async-drains the ring buffer. This is the
+# seed of the privileged Sluice engine daemon (DEC-010). Host target, its own [workspace].
+[package]
+name = "sluice-engine"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "sluice-engine"
+path = "src/main.rs"
+
+[dependencies]
+aya = "0.13"
+sluice-common = { path = "../common" }
+sluice-proto = { path = "../../crates/sluice-proto" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time", "sync"] }
+tokio-stream = { version = "0.1", features = ["net", "sync"] }
+tonic = "0.12"
+# UDS client transport for the sluice-watch diagnostic bin (same pattern as the UI client).
+tower = { version = "0.4", features = ["util"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+libc = "0.2"
+anyhow = "1"
+
+[workspace]

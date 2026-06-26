@@ -1,0 +1,8 @@
+# Build this crate for the eBPF target by default. rustc's bpfel target uses `bpf-linker`
+# (must be on PATH: `cargo +stable install bpf-linker --locked`). build-std=core compiles
+# core from source for the bare-metal BPF target (needs nightly + the rust-src component).
+[build]
+target = "bpfel-unknown-none"
+
+[unstable]
+build-std = ["core"]

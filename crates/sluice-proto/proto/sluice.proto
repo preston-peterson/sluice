@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+// The Sluice engine ↔ Sluice UI contract. The *engine* is the gRPC server and the UI is the
+// client: the engine streams connection events and answers decision RPCs (SetRule/RemoveRule/
+// ListRules) plus the inbound policy.
+package sluice;
+
+service SluiceEngine {
+  // Server-streaming: every outbound connection the engine observes, with its verdict.
+  rpc WatchConnections(WatchRequest) returns (stream ConnEvent);
+
+  // E3.1 — decision RPCs. The engine persists rules and enforces them in-kernel.
+  rpc SetRule(Rule) returns (RuleAck);
+  rpc RemoveRule(RuleId) returns (RuleAck);
+  rpc ListRules(ListRequest) returns (RuleList);
+
+  // E6.1 — inbound enforcement (nftables input chain). GetInboundPolicy returns the current
+  // posture; SetInboundPolicy replaces it (and applies/removes the nftables table).
+  rpc GetInboundPolicy(InboundQuery) returns (InboundPolicy);
+  rpc SetInboundPolicy(InboundPolicy) returns (RuleAck);
+}
+
+message InboundQuery {}
+// An allowed inbound port (proto "tcp"/"udp"). established/related + loopback are always
+// accepted (structural — a default-deny-inbound that drops those would kill return traffic).
+message InboundAllow {
+  string proto = 1;
+  uint32 port = 2;
+}
+message InboundPolicy {
+  bool enforce = 1; // false = observe (no nftables); true = default-deny inbound + allow-list
+  repeated InboundAllow allow = 2;
+}
+
+message WatchRequest {}
+
+// A persistent firewall rule (E3.1: deny by destination IPv4, optionally a specific port).
+// Allow rules are implicit under default-allow, so `action` is block for now.
+message Rule {
+  string id = 1;       // stable id: "v4:<ip>:<port>" (port 0 = any port)
+  uint32 action = 2;   // 1 = block
+  string dst_ip = 3;   // IPv4 (E3.1 is v4-only)
+  uint32 dst_port = 4; // host byte order; 0 = any port to this IP
+}
+message RuleId { string id = 1; }
+message RuleAck { bool ok = 1; string error = 2; } // ok=false ⇒ error explains (e.g. safelisted)
+message ListRequest {}
+message RuleList { repeated Rule rules = 1; }
+
+// One observed outbound connection. Mirrors the kernel ring-buffer record, enriched
+// engine-side with the process path/name (the unprivileged UI can't read other users'
+// /proc reliably). Addresses are already rendered to strings for the UI.
+message ConnEvent {
+  uint32 pid = 1;
+  uint32 uid = 2;
+  string dst_ip = 3;       // rendered IPv4/IPv6
+  uint32 dst_port = 4;     // host byte order
+  uint32 family = 5;       // AF_INET=2, AF_INET6=10
+  uint32 verdict = 6;      // 0 = allow, 1 = block
+  string process_path = 7; // /proc/<pid>/exe (best-effort)
+  string comm = 8;         // /proc/<pid>/comm (best-effort)
+  uint64 at_unix_ms = 9;   // engine wall-clock when observed
+  string dst_host = 10;    // hostname from the DNS snoop (E4), empty if unknown
+  repeated string process_args = 11; // /proc/<pid>/cmdline — identifies which node/python/etc.
+  string container = 12;   // container label (e.g. "uptime-kuma"), empty if not containerized
+  bool inbound = 13;       // E6.0: this is an INCOMING connection (remote → local:dst_port)
+  string protocol = 14;    // #14: L4 protocol — "tcp"/"udp"/"icmp"/"icmpv6", empty if unknown
+}

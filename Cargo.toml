@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/sluice-types",
+    "crates/sluice-ui",
+    "crates/sluice-proto",
+]
+
+# Pinned shared dependencies. Members reference these with `workspace = true` so the whole
+# tree builds against one consistent, pinned set.
+[workspace.dependencies]
+tonic = "0.12"
+prost = "0.13"
+tonic-build = "0.12"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "sync", "time", "net"] }
+tokio-stream = "0.1"
+futures = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1"
+tauri = { version = "2" }
+tauri-build = { version = "2" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.89"
+license = "LicenseRef-Sluice-Unlicensed"  # placeholder; see LICENSE / DEC-002
+publish = false
+
+[profile.release]
+strip = true

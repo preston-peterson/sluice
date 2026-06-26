@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Sluice",
+  "version": "0.1.5",
+  "identifier": "dev.sluice.app",
+  "build": {
+    "frontendDist": "./frontend"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Sluice — network activity",
+        "width": 1100,
+        "height": 740,
+        "minWidth": 720,
+        "minHeight": 480
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb"],
+    "category": "Utility",
+    "shortDescription": "Application firewall & network monitor.",
+    "longDescription": "Sluice is an application firewall and network monitor for Ubuntu (GNOME). It watches and controls both outbound and inbound connections with a live decision feed, two-click allow/block, per-app and per-destination views, a usage view, a bandwidth graph, and a security event log. The unprivileged desktop app pairs with a small in-kernel (eBPF) engine.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/256x256.png",
+      "icons/512x512.png"
+    ],
+    "linux": {
+      "deb": {}
+    }
+  }
+}

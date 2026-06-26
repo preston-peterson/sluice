@@ -1,0 +1,32 @@
+# sluice-ebpf — the kernel-side eBPF program for the E0 spike. Builds for
+# `bpfel-unknown-none` (see .cargo/config.toml) on the nightly toolchain (rust-toolchain.toml).
+# Detached workspace: it must NOT be pulled into the host-target workspace.
+[package]
+name = "sluice-ebpf"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+aya-ebpf = "0.1"
+sluice-common = { path = "../common" }
+
+# A single eBPF object with two entrypoints (connect4/connect6); built as a binary crate.
+[[bin]]
+name = "sluice-ebpf"
+path = "src/main.rs"
+
+# Small, fast-to-verify object. No std, no unwinding.
+[profile.release]
+opt-level = 3
+debug = false
+lto = true
+panic = "abort"
+codegen-units = 1
+
+[profile.dev]
+opt-level = 3
+debug = false
+panic = "abort"
+
+[workspace]

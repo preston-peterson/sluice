@@ -1,0 +1,14 @@
+Sluice's geo/country lookup (FR-052) uses the DB-IP Lite IP-to-Country database.
+
+  Source:      https://db-ip.com/db/download/ip-to-country-lite
+  License:     Creative Commons Attribution 4.0 International (CC-BY-4.0)
+  Attribution: "IP geolocation by DB-IP" (https://db-ip.com)
+
+The database is NOT distributed with Sluice. It is fetched per-machine by
+`just geoip` (scripts/fetch-geoip.sh) into $XDG_DATA_HOME/sluice/geoip/ and read
+locally at runtime — no network calls during use (SEC-007). Point SLUICE_GEOIP_DB
+at a different file to override. If the database is absent, country lookups are
+disabled (the UI shows "—").
+
+At packaging/release time, surface the DB-IP attribution in an about/credits
+screen to satisfy CC-BY (the in-app country field carries a hover attribution).
