@@ -7,8 +7,8 @@
 //! `connect6` stays observe-only for now (v6 enforcement is a follow-on).
 //!
 //! Default posture is allow-all (an empty map blocks nothing) — the userspace control plane
-//! adds rules. The BPF "license" string lets us call the GPL-only ring-buffer helpers; it
-//! licenses *this object* only (flag for DEC-002 at engine time).
+//! adds rules. The BPF "license" string is what lets us call the GPL-only ring-buffer helpers
+//! (Sluice is GPL-3.0-or-later, GPL-compatible).
 #![no_std]
 #![no_main]
 
@@ -119,7 +119,7 @@ fn handle(ctx: &SockAddrContext, family: u16) -> i32 {
     }
 }
 
-// Required for a GPL-only helper (bpf_ringbuf_*). See the module note re: DEC-002.
+// Required to call GPL-only helpers (bpf_ringbuf_*); Sluice is GPL-compatible (see the module note).
 #[link_section = "license"]
 #[used]
 static LICENSE: [u8; 4] = *b"GPL\0";

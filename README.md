@@ -84,5 +84,5 @@ just ui             # run the desktop app against a running engine
 
 ## License
 
-Sluice's code is currently **unlicensed** pending a licensing decision — see
-[`LICENSE`](LICENSE).
+Sluice is free software under the **GNU General Public License v3.0 or later**
+(`GPL-3.0-or-later`) — see [`LICENSE`](LICENSE). Copyright © 2026 Preston Peterson.
