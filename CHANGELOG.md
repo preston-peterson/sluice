@@ -6,7 +6,13 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Nothing yet — see the latest released entry below.
+### Added
+
+- **Opt-in update check** (Settings → Updates): checks GitHub Releases for a newer version and
+  shows it inline with a link to the notes. Off by default; when enabled it checks once at launch.
+  This is the only network request Sluice makes — it's explicit and shows up in your own feed.
+- **Release packaging** (`scripts/package-release.sh` / `just release`): builds the `.deb` + a
+  SHA-256 checksum and can publish a GitHub release.
 
 ## [0.1.5] — 2026-06-26
 

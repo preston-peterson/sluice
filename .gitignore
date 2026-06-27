@@ -27,3 +27,6 @@ crates/sluice-ui/geoip/*.gz
 
 # Internal AI/ops brief — local only, never published
 CLAUDE.md
+
+# Release artifacts (built by scripts/package-release.sh)
+/dist/

@@ -48,6 +48,10 @@ engine-install: engine-build
     sudo engine/install.sh
 
 # Fetch the offline geoIP database (DB-IP Lite, CC-BY-4.0) for country lookups in the connection
-# detail (FR-052). Per-machine; not committed. Sluice reads it locally — no network at runtime.
+# detail. Per-machine; not committed. Sluice reads it locally — no network at runtime.
 geoip:
     bash scripts/fetch-geoip.sh
+
+# Build a release (.deb + checksum into dist/). Add `--publish` to also cut a GitHub release.
+release *ARGS:
+    bash scripts/package-release.sh {{ARGS}}

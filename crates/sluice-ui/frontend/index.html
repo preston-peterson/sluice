@@ -318,27 +318,24 @@
             <div class="set-row">
               <div>
                 <div class="set-t">Current version</div>
-                <div class="set-d mono">Sluice 0.1.5 · up to date</div>
+                <div class="set-d mono" id="set-version">Sluice 0.1.5</div>
               </div>
-              <button type="button">Check for updates</button>
+              <button id="set-check-update" type="button">Check for updates</button>
             </div>
             <div class="set-row">
               <div>
                 <div class="set-t">Automatically check for updates</div>
-                <div class="set-d">Off by default.</div>
+                <div class="set-d">Off by default. When on, Sluice checks once at launch.</div>
               </div>
-              <button class="toggle-btn swbtn" type="button" aria-pressed="false">Off</button>
+              <button id="set-autoupdate" class="toggle-btn" type="button" aria-pressed="false">Off</button>
             </div>
             <div class="set-row">
               <div>
                 <div class="set-t">Update source</div>
-                <div class="set-d">Where updates are fetched from (signed releases).</div>
+                <div class="set-d">Releases are published on GitHub; the check reads the latest tag.</div>
               </div>
-              <span class="mono muted small">tollkeep.app/releases</span>
+              <span class="mono muted small">github.com/preston-peterson/sluice/releases</span>
             </div>
-          </div>
-          <div class="muted small">
-            These controls are placeholders — wired up in tasks #32 (retention) and #33 (updates).
           </div>
         </section>
       </div>

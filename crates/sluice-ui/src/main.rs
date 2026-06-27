@@ -826,6 +826,93 @@ fn open_url(url: String) -> bool {
         .unwrap_or(false)
 }
 
+/// The version Sluice was built at (the repo `VERSION` file, embedded at compile time).
+const VERSION: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../VERSION"));
+
+/// Result of an update check, shipped to the webview.
+#[derive(Serialize)]
+struct UpdateInfo {
+    current: String,
+    latest: String,
+    update_available: bool,
+    url: String,
+    error: String,
+}
+
+/// Compare dotted numeric versions; true if `latest` is strictly newer than `current`.
+fn version_newer(latest: &str, current: &str) -> bool {
+    let parts = |s: &str| -> Vec<u32> {
+        s.trim()
+            .trim_start_matches('v')
+            .split('.')
+            .map(|x| x.trim().parse().unwrap_or(0))
+            .collect()
+    };
+    let (l, c) = (parts(latest), parts(current));
+    for i in 0..l.len().max(c.len()) {
+        let (a, b) = (
+            l.get(i).copied().unwrap_or(0),
+            c.get(i).copied().unwrap_or(0),
+        );
+        if a != b {
+            return a > b;
+        }
+    }
+    false
+}
+
+/// Check GitHub Releases for a newer version (update *alert* only — no download).
+///
+/// SEC-007: this is the ONE network call Sluice can make, and only when the user invokes it
+/// (a manual "Check for updates" click, or the opt-in auto-check toggle which the webview gates).
+/// It shells out to `curl` rather than embedding an HTTP client, so the request is explicit and
+/// even shows up in Sluice's own feed. Fails closed (returns an error string, never panics).
+#[tauri::command]
+fn check_for_update() -> UpdateInfo {
+    let current = VERSION.trim().to_string();
+    let mut info = UpdateInfo {
+        current: current.clone(),
+        latest: String::new(),
+        update_available: false,
+        url: String::new(),
+        error: String::new(),
+    };
+    let out = std::process::Command::new("curl")
+        .args([
+            "-fsSL",
+            "--max-time",
+            "8",
+            "-H",
+            "Accept: application/vnd.github+json",
+            "https://api.github.com/repos/preston-peterson/sluice/releases/latest",
+        ])
+        .output();
+    match out {
+        Ok(o) if o.status.success() => match serde_json::from_slice::<serde_json::Value>(&o.stdout)
+        {
+            Ok(v) => {
+                let latest = v
+                    .get("tag_name")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("")
+                    .trim_start_matches('v')
+                    .to_string();
+                info.url = v
+                    .get("html_url")
+                    .and_then(|u| u.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                info.update_available = !latest.is_empty() && version_newer(&latest, &current);
+                info.latest = latest;
+            }
+            Err(_) => info.error = "no release published yet".to_string(),
+        },
+        Ok(_) => info.error = "no release published yet".to_string(),
+        Err(e) => info.error = format!("check failed (is curl installed?): {e}"),
+    }
+    info
+}
+
 /// An app's destinations over time (FR-006), newest activity first.
 #[tauri::command]
 fn app_history(state: State<AppState>, app: String) -> Vec<AppHost> {
@@ -1391,6 +1478,7 @@ fn main() {
             geo_country,
             rdns,
             open_url,
+            check_for_update,
             describe_process
         ])
         .on_window_event(|window, event| match event {
