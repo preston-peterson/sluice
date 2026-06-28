@@ -829,6 +829,12 @@ fn open_url(url: String) -> bool {
 /// The version Sluice was built at (the repo `VERSION` file, embedded at compile time).
 const VERSION: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../VERSION"));
 
+/// The built version, for display in the header (no network — just the embedded string).
+#[tauri::command]
+fn app_version() -> String {
+    VERSION.trim().to_string()
+}
+
 /// Result of an update check, shipped to the webview.
 #[derive(Serialize)]
 struct UpdateInfo {
@@ -1485,6 +1491,7 @@ fn main() {
             geo_country,
             rdns,
             open_url,
+            app_version,
             check_for_update,
             describe_process
         ])

@@ -430,6 +430,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 .note.err { color: var(--blocked); }
 
 .paused { color: var(--pending); font-weight: 600; font-size: 12px; }
+.app-version { color: var(--muted); font-size: 12px; font-weight: 500; }
 .hidden { display: none !important; }
 
 /* Confirmation modal */

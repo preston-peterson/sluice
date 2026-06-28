@@ -8,6 +8,12 @@ follows [Semantic Versioning](https://semver.org/).
 
 Nothing yet.
 
+## [0.1.7] — 2026-06-28
+
+### Added
+
+- The installed version is now shown in the app header (top-right).
+
 ## [0.1.6] — 2026-06-28
 
 ### Added
