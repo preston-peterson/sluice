@@ -14,6 +14,12 @@ follows [Semantic Versioning](https://semver.org/).
 - **Release packaging** (`scripts/package-release.sh` / `just release`): builds the `.deb` + a
   SHA-256 checksum and can publish a GitHub release.
 
+### Fixed
+
+- The window could come up unresponsive (dead minimize/maximize/close and no input) on some
+  Wayland systems. Sluice now disables WebKitGTK's DMABUF renderer at startup — the standard fix —
+  so it launches normally without any environment tweaks.
+
 ## [0.1.5] — 2026-06-26
 
 The first cut of Sluice: a desktop application firewall and network monitor for

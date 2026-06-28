@@ -1401,6 +1401,13 @@ fn remove_rule(state: State<AppState>, name: String) -> RuleResult {
 }
 
 fn main() {
+    // WebKitGTK's DMABUF renderer hangs the window (dead controls / no input) on some Wayland +
+    // GPU/driver combos. Disabling it before the webview initializes is the standard fix; set it
+    // only if the user hasn't chosen their own value. Must run before any GTK/WebKit init.
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
