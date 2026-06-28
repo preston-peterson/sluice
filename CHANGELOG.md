@@ -6,6 +6,10 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.6] — 2026-06-28
+
 ### Added
 
 - **Opt-in update check** (Settings → Updates): checks GitHub Releases for a newer version and
