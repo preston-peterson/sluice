@@ -18,7 +18,7 @@ sluice-common = { path = "../common" }
 sluice-proto = { path = "../../crates/sluice-proto" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time", "sync"] }
 tokio-stream = { version = "0.1", features = ["net", "sync"] }
-tonic = "0.12"
+tonic = "0.14"
 # UDS client transport for the sluice-watch diagnostic bin (same pattern as the UI client).
 tower = { version = "0.4", features = ["util"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
