@@ -9,7 +9,7 @@ license = "GPL-3.0-or-later"
 publish = false
 
 [dependencies]
-aya-ebpf = "0.1"
+aya-ebpf = "0.2"
 sluice-common = { path = "../common" }
 
 # A single eBPF object with two entrypoints (connect4/connect6); built as a binary crate.
