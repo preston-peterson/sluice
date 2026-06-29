@@ -24,29 +24,15 @@ echo "[install] copying engine → $LIBDIR"
 install -D -m 0755 "$BIN" "$LIBDIR/sluice-engine"
 install -D -m 0644 "$OBJ" "$LIBDIR/sluice-ebpf"
 
-echo "[install] writing $UNIT (owner uid $OWNER_UID)"
-cat > "$UNIT" <<UNIT
-[Unit]
-Description=Sluice firewall engine (eBPF cgroup/connect)
-After=network-pre.target
-Wants=network-pre.target
+# Install the canonical unit (same file the .deb ships) — static, with the owner uid in an
+# EnvironmentFile so the unit itself is identical for source and packaged installs.
+echo "[install] installing $UNIT"
+install -D -m 0644 "$DIR/sluice-engine.service" "$UNIT"
 
-[Service]
-ExecStart=$LIBDIR/sluice-engine
-Environment=SLUICE_BPF_OBJ=$LIBDIR/sluice-ebpf
-Environment=SLUICE_ENGINE_UDS=/run/sluice/engine.sock
-Environment=SLUICE_RULES=/var/lib/sluice/rules.json
-Environment=SLUICE_OWNER_UID=$OWNER_UID
-RuntimeDirectory=sluice
-RuntimeDirectoryMode=0755
-StateDirectory=sluice
-StateDirectoryMode=0700
-Restart=always
-RestartSec=2
-
-[Install]
-WantedBy=multi-user.target
-UNIT
+echo "[install] writing owner uid ($OWNER_UID) → /etc/sluice/engine.env"
+install -d -m 0755 /etc/sluice
+printf 'SLUICE_OWNER_UID=%s\n' "$OWNER_UID" > /etc/sluice/engine.env
+chmod 0644 /etc/sluice/engine.env
 
 systemctl daemon-reload
 echo "[install] done. Enable + start with:"

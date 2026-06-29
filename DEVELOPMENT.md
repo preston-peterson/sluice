@@ -132,9 +132,9 @@ sluice/
 ├── Cargo.toml                  # root workspace (stable 1.89): the desktop app + support crates
 ├── rust-toolchain.toml         # pins stable 1.89 for the root workspace
 ├── justfile                    # common dev tasks (setup / check / ui / engine-build / …)
-├── install.sh                  # one-command full install (engine service + UI .deb)
+├── install.sh                  # one-command from-source install (builds the combined .deb: engine + UI)
 ├── uninstall.sh                # reverse install.sh
-├── VERSION                     # current version (0.1.5)
+├── VERSION                     # current version (0.1.8)
 ├── scripts/
 │   ├── setup.sh                # idempotent dev bootstrap (toolchains, protoc, Tauri libs)
 │   └── fetch-geoip.sh          # fetch the offline IP-to-country database (per-machine, not committed)

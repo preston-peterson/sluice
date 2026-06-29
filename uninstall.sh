@@ -12,7 +12,7 @@
 #   ./uninstall.sh --keep    # remove engine + UI, keep all data, no prompts
 #   ./uninstall.sh --help
 #
-# Removed always:  the sluice-engine service + /usr/lib/sluice, the sluice-ui package.
+# Removed always:  the sluice package (engine service + /usr/lib/sluice + the desktop UI).
 # Your data:       /var/lib/sluice (rules) and ~/.local/share/sluice (history).
 # Stopping the engine reopens inbound traffic automatically.
 # =============================================================================
@@ -38,25 +38,32 @@ have sudo || { echo "sudo is required." >&2; exit 1; }
 
 echo -e "${CYAN}Sluice uninstaller${RESET}"
 
-# 1. Engine service + installed files (reopens inbound on stop). Keeps /var/lib/sluice for now.
-step "Removing the engine service"
-if [[ -x "$ROOT/engine/uninstall.sh" ]]; then
-  sudo "$ROOT/engine/uninstall.sh" || true
+# 1. The Sluice package (engine + UI in one). Its prerm stops the engine (reopening inbound),
+#    dpkg removes the files + systemd unit, and postrm cleans up config (on --purge).
+step "Removing the Sluice package (engine + UI)"
+if dpkg -s sluice >/dev/null 2>&1; then
+  if [[ "$MODE" == purge ]]; then
+    sudo apt-get purge -y sluice 2>/dev/null || sudo dpkg -P sluice || true
+  else
+    sudo apt-get remove -y sluice 2>/dev/null || sudo dpkg -r sluice || true
+  fi
+  ok "sluice package removed (engine stopped, inbound reopened)"
 else
-  sudo systemctl disable --now sluice-engine 2>/dev/null || true
-  sudo rm -f /etc/systemd/system/sluice-engine.service
-  sudo systemctl daemon-reload 2>/dev/null || true
-  sudo rm -rf /usr/lib/sluice
+  echo "  (sluice package not installed — skipping)"
 fi
-ok "engine service removed"
 
-# 2. Desktop UI package
-step "Removing the desktop UI"
-if dpkg -s sluice-ui >/dev/null 2>&1; then
-  sudo apt-get remove -y sluice-ui 2>/dev/null || sudo dpkg -r sluice-ui || true
-  ok "sluice-ui package removed"
-else
-  echo "  (sluice-ui package not installed — skipping)"
+# 2. A source-installed engine (./install.sh --engine writes a unit to /etc/systemd/system).
+if [[ -e /etc/systemd/system/sluice-engine.service ]]; then
+  step "Removing source-installed engine service"
+  if [[ -x "$ROOT/engine/uninstall.sh" ]]; then
+    sudo "$ROOT/engine/uninstall.sh" || true
+  else
+    sudo systemctl disable --now sluice-engine 2>/dev/null || true
+    sudo rm -f /etc/systemd/system/sluice-engine.service
+    sudo systemctl daemon-reload 2>/dev/null || true
+    sudo rm -rf /usr/lib/sluice
+  fi
+  ok "source engine removed"
 fi
 
 # 3. Data — rules store (/var/lib/sluice) + UI history (~/.local/share/sluice)

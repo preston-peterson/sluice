@@ -3,8 +3,10 @@
 # Sluice — build a release + (optionally) publish it to GitHub
 # =============================================================================
 #
-# Builds the desktop .deb, writes a SHA-256 checksum, and stages both under
-# dist/. With --publish it creates a GitHub Release tagged v<VERSION> (from the
+# Builds the combined .deb (desktop UI + the prebuilt engine: eBPF object + loader, plus the
+# systemd unit and install hooks), writes a SHA-256 checksum, and stages both under
+# dist/. The result installs the whole product with no build toolchain on the target.
+# With --publish it creates a GitHub Release tagged v<VERSION> (from the
 # repo VERSION file) and uploads the artifacts — which is what the in-app
 # "Check for updates" reads (the latest release tag).
 #
@@ -30,14 +32,28 @@ VERSION="$(tr -d ' \n' < VERSION)"
 TAG="v${VERSION}"
 echo -e "${CYAN}Packaging Sluice ${TAG}${RESET}"
 
-# 1. Build the .deb
-echo -e "${CYAN}==>${RESET} Building the desktop .deb"
+# 1. Build the engine (eBPF object on nightly + the host loader) and stage the PREBUILT
+#    artifacts where the Tauri deb 'files' map can find them. This is what makes the release
+#    deb install on a machine with no build toolchain — the engine ships prebuilt inside it.
+echo -e "${CYAN}==>${RESET} Building the engine (eBPF object + loader)"
+command -v bpf-linker >/dev/null 2>&1 || { echo "bpf-linker required to build the eBPF object: cargo install bpf-linker" >&2; exit 1; }
+( cd engine/ebpf && cargo build --release )      # rust-toolchain.toml pins nightly here
+( cd engine/loader && cargo build --release )
+STAGE="crates/sluice-ui/dist-engine"
+mkdir -p "$STAGE"
+install -m 0755 engine/loader/target/release/sluice-engine                 "$STAGE/sluice-engine"
+install -m 0644 engine/ebpf/target/bpfel-unknown-none/release/sluice-ebpf  "$STAGE/sluice-ebpf"
+install -m 0644 engine/sluice-engine.service                               "$STAGE/sluice-engine.service"
+echo -e "  ${GREEN}✓${RESET} staged engine artifacts → $STAGE"
+
+# 2. Build the combined .deb (UI + the staged engine, with the install/remove hooks)
+echo -e "${CYAN}==>${RESET} Building the combined .deb (UI + engine)"
 cargo tauri --version >/dev/null 2>&1 || cargo install tauri-cli --locked
 ( cd crates/sluice-ui && cargo tauri build --bundles deb )
 DEB="$(ls -t target/release/bundle/deb/*.deb 2>/dev/null | head -1 || true)"
 [[ -n "$DEB" ]] || { echo "no .deb produced" >&2; exit 1; }
 
-# 2. Stage under dist/ with a checksum
+# 3. Stage under dist/ with a checksum
 mkdir -p dist
 cp -f "$DEB" dist/
 DEB_NAME="$(basename "$DEB")"
@@ -45,7 +61,7 @@ DEB_NAME="$(basename "$DEB")"
 echo -e "  ${GREEN}✓${RESET} dist/${DEB_NAME}"
 echo -e "  ${GREEN}✓${RESET} dist/${DEB_NAME}.sha256"
 
-# 3. Optionally publish a GitHub release
+# 4. Optionally publish a GitHub release
 if [[ $PUBLISH -eq 1 ]]; then
   command -v gh >/dev/null 2>&1 || { echo "gh (GitHub CLI) required for --publish" >&2; exit 1; }
   echo -e "${CYAN}==>${RESET} Publishing GitHub release ${TAG}"

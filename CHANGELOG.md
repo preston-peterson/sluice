@@ -8,6 +8,29 @@ follows [Semantic Versioning](https://semver.org/).
 
 Nothing yet.
 
+## [0.1.8] — 2026-06-29
+
+### Changed
+
+- **One combined package — install with no build toolchain.** Sluice now ships as a single
+  Debian package (`sluice`) containing *both* halves: the desktop UI and the **prebuilt** engine
+  (eBPF object + loader) plus its systemd unit. `sudo apt install ./sluice_<version>_amd64.deb`
+  installs the whole product and needs **no** Rust/nightly/`bpf-linker`/`protoc` — the engine
+  ships prebuilt inside the package. Installing enables the root engine service; removing it stops
+  the engine (reopening inbound) and cleans up. `apt purge` keeps your rule store
+  (`/var/lib/sluice`) so it can't be wiped by accident.
+- **Owner UID moved out of the systemd unit.** The user authorized to drive the engine over its
+  control socket is now recorded in `/etc/sluice/engine.env` (resolved at install time) instead of
+  being baked into the unit, so the unit is identical for packaged and from-source installs. Edit
+  that file and `systemctl restart sluice-engine` to change it.
+- **`./install.sh` is now the from-source path** and installs via the same combined `.deb`;
+  `scripts/package-release.sh` builds the engine and bundles the prebuilt artifacts into the
+  release `.deb`.
+
+### Added
+
+- `Recommends: nftables` on the package (used for inbound enforcement).
+
 ## [0.1.7] — 2026-06-28
 
 ### Added
@@ -130,5 +153,8 @@ traffic by default.
 - **Local data at rest.** History and configuration are stored with `0600`
   permissions in a `0700` directory.
 
-[Unreleased]: https://example.com/sluice/compare/v0.1.5...HEAD
-[0.1.5]: https://example.com/sluice/releases/tag/v0.1.5
+[Unreleased]: https://github.com/preston-peterson/sluice/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/preston-peterson/sluice/compare/v0.1.7...v0.1.8
+[0.1.7]: https://github.com/preston-peterson/sluice/compare/v0.1.6...v0.1.7
+[0.1.6]: https://github.com/preston-peterson/sluice/compare/v0.1.5...v0.1.6
+[0.1.5]: https://github.com/preston-peterson/sluice/releases/tag/v0.1.5

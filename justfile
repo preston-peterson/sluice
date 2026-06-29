@@ -33,9 +33,13 @@ fmt:
 ui:
     cargo run -p sluice-ui
 
-# Build an installable .deb (release build + Tauri bundler). Output under
-# target/release/bundle/deb/. Needs the Tauri CLI: `cargo install tauri-cli` (or `just setup`).
-package:
+# Build the combined installable .deb (UI + the prebuilt engine, staged from engine-build).
+# Output under target/release/bundle/deb/. Needs the Tauri CLI: `cargo install tauri-cli`.
+package: engine-build
+    mkdir -p crates/sluice-ui/dist-engine
+    install -m 0755 engine/loader/target/release/sluice-engine                crates/sluice-ui/dist-engine/sluice-engine
+    install -m 0644 engine/ebpf/target/bpfel-unknown-none/release/sluice-ebpf crates/sluice-ui/dist-engine/sluice-ebpf
+    install -m 0644 engine/sluice-engine.service                              crates/sluice-ui/dist-engine/sluice-engine.service
     cd crates/sluice-ui && PROTOC="${PROTOC:-$HOME/.local/bin/protoc}" cargo tauri build --bundles deb
 
 # Build the Sluice engine (eBPF object on nightly + the host loader). See engine/README.md.

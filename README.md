@@ -61,8 +61,20 @@ Sluice is two parts with a clean privilege split:
 
 ## Install
 
-One command builds and installs both halves (the root engine service + the desktop UI), pulling
-in the build toolchain as needed:
+**Recommended — prebuilt package.** Download the `.deb` from the latest release and install it;
+**no build toolchain required**:
+
+```bash
+sudo apt install ./sluice_<version>_amd64.deb
+```
+
+It's a single combined package (named `sluice`) with both halves — the desktop UI and the prebuilt
+root engine + its systemd unit. `apt` pulls the runtime libraries automatically, and the package's
+install scripts enable and start the `sluice-engine` service and record the authorized owner UID in
+`/etc/sluice/engine.env`.
+
+**From source.** From a checkout, one command builds both halves and installs the same combined
+package, pulling in the build toolchain as needed:
 
 ```bash
 ./install.sh
@@ -70,8 +82,9 @@ in the build toolchain as needed:
 
 Then launch **Sluice** from your app menu (or run `sluice-ui`). The engine runs as a root systemd
 service (`sluice-engine`); the UI is per-user and unprivileged. Recovery is always
-`sudo systemctl stop sluice-engine`. To remove everything: `./uninstall.sh`. See
-[`docs/INSTALL.md`](docs/INSTALL.md) for details and options.
+`sudo systemctl stop sluice-engine`. To update, install a newer release `.deb` (or
+`git pull && ./install.sh`); to remove everything, `./uninstall.sh` (or `sudo apt remove sluice`).
+See [`docs/INSTALL.md`](docs/INSTALL.md) for details and options.
 
 ## Development
 

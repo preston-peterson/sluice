@@ -1,0 +1,24 @@
+[Unit]
+Description=Sluice firewall engine (eBPF cgroup/connect)
+Documentation=https://github.com/preston-peterson/sluice
+After=network-pre.target
+Wants=network-pre.target
+
+[Service]
+ExecStart=/usr/lib/sluice/sluice-engine
+Environment=SLUICE_BPF_OBJ=/usr/lib/sluice/sluice-ebpf
+Environment=SLUICE_ENGINE_UDS=/run/sluice/engine.sock
+Environment=SLUICE_RULES=/var/lib/sluice/rules.json
+# SLUICE_OWNER_UID — the uid allowed to drive the engine over its UDS — is written to
+# /etc/sluice/engine.env by the installer (the leading '-' makes the file optional). Edit
+# that file and `systemctl restart sluice-engine` to change which user can connect.
+EnvironmentFile=-/etc/sluice/engine.env
+RuntimeDirectory=sluice
+RuntimeDirectoryMode=0755
+StateDirectory=sluice
+StateDirectoryMode=0700
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

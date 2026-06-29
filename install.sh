@@ -3,15 +3,16 @@
 # Sluice — one-command installer
 # =============================================================================
 #
-# Builds and installs both halves of Sluice:
-#   1. the root engine  → /usr/lib/sluice + a systemd service (sluice-engine)
-#   2. the desktop UI    → a .deb installed system-wide (sluice-ui + app menu entry)
+# Builds Sluice from source and installs it as ONE Debian package (sluice) containing both halves:
+#   1. the root engine  → /usr/lib/sluice + a systemd service (sluice-engine), via the package hooks
+#   2. the desktop UI    → sluice-ui binary + app-menu entry
+# End users instead just `sudo apt install ./sluice_*.deb` from a release — no toolchain needed.
 #
 # Usage:
-#   ./install.sh              # full install (builds from source; uses sudo where needed)
-#   ./install.sh --skip-deps  # skip the prerequisite step (toolchain already set up)
-#   ./install.sh --engine     # install/refresh ONLY the engine
-#   ./install.sh --ui         # build/install ONLY the desktop UI (.deb)
+#   ./install.sh              # full from-source install: build the combined .deb (UI + engine) + install it
+#   ./install.sh --skip-deps  # skip the prerequisite/toolchain step (already set up)
+#   ./install.sh --engine     # dev fast-path: build + install ONLY the engine (systemd unit; no .deb rebuild)
+#   ./install.sh --ui         # rebuild + reinstall the combined .deb (skips the toolchain prereqs)
 #   ./install.sh --help
 #
 # Run it as your normal user — it calls sudo only for the steps that need root
@@ -30,12 +31,12 @@ warn() { echo -e "  ${YELLOW}!${RESET} $*"; }
 die()  { echo -e "  ${RED}✗${RESET} $*" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
-DO_DEPS=1; DO_ENGINE=1; DO_UI=1
+DO_DEPS=1; MODE=full   # full | engine | ui
 for a in "$@"; do case "$a" in
   --skip-deps) DO_DEPS=0 ;;
-  --engine)    DO_UI=0 ;;
-  --ui)        DO_ENGINE=0; DO_DEPS=0 ;;
-  --help|-h)   sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  --engine)    MODE=engine ;;
+  --ui)        MODE=ui; DO_DEPS=0 ;;
+  --help|-h)   sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
   *) die "unknown option: $a (try --help)" ;;
 esac; done
 
@@ -72,34 +73,54 @@ fi
 export PROTOC="${PROTOC:-$(command -v protoc || echo /usr/bin/protoc)}"
 
 # ---------------------------------------------------------------------------
-# 2 + 3. Engine — build the eBPF object + loader, install the systemd service
+# --engine: dev fast-path — build + install ONLY the engine (systemd unit; no .deb rebuild)
 # ---------------------------------------------------------------------------
-if [[ $DO_ENGINE -eq 1 ]]; then
+if [[ $MODE == engine ]]; then
   step "Building the engine (eBPF object + root loader)"
   ( cd engine/ebpf && cargo build --release )      # rust-toolchain.toml pins nightly here
   ( cd engine/loader && cargo build --release )
   ok "engine built"
-
   step "Installing the engine service (needs root)"
   sudo SLUICE_OWNER_UID="${SLUICE_OWNER_UID:-$(id -u)}" SUDO_UID="$(id -u)" ./engine/install.sh
   sudo systemctl enable --now sluice-engine
   if systemctl is-active --quiet sluice-engine; then ok "sluice-engine is running"; else warn "sluice-engine not active — check: journalctl -u sluice-engine -n 30"; fi
+  echo -e "\n${GREEN}Engine installed.${RESET} Recovery: ${CYAN}sudo systemctl stop sluice-engine${RESET}"
+  exit 0
 fi
 
 # ---------------------------------------------------------------------------
-# 4. Desktop UI — build a .deb and install it (app menu entry + sluice-ui binary)
+# 2. Engine — build the eBPF object + loader and STAGE them so the .deb bundles them prebuilt.
 # ---------------------------------------------------------------------------
-if [[ $DO_UI -eq 1 ]]; then
-  step "Building the desktop UI (.deb)"
-  cargo tauri --version >/dev/null 2>&1 || cargo install tauri-cli --locked || warn "tauri-cli install failed; trying anyway"
-  ( cd crates/sluice-ui && cargo tauri build --bundles deb )
-  DEB="$(ls -t target/release/bundle/deb/*.deb 2>/dev/null | head -1 || true)"
-  [[ -n "$DEB" ]] || die "no .deb produced under target/release/bundle/deb/"
-  ok "built $(basename "$DEB")"
-  step "Installing the UI .deb (needs root)"
-  sudo apt-get install -y "$DEB" 2>/dev/null || { sudo dpkg -i "$DEB" || true; sudo apt-get -f install -y; }
-  ok "sluice-ui installed"
+STAGE="crates/sluice-ui/dist-engine"
+if [[ $MODE == full || ! -f "$STAGE/sluice-engine" || ! -f "$STAGE/sluice-ebpf" ]]; then
+  step "Building + staging the engine (eBPF object + root loader)"
+  ( cd engine/ebpf && cargo build --release )      # rust-toolchain.toml pins nightly here
+  ( cd engine/loader && cargo build --release )
+  mkdir -p "$STAGE"
+  install -m 0755 engine/loader/target/release/sluice-engine                "$STAGE/sluice-engine"
+  install -m 0644 engine/ebpf/target/bpfel-unknown-none/release/sluice-ebpf "$STAGE/sluice-ebpf"
+  install -m 0644 engine/sluice-engine.service                              "$STAGE/sluice-engine.service"
+  ok "engine staged → $STAGE"
 fi
+
+# ---------------------------------------------------------------------------
+# 3. Build + install the COMBINED .deb (UI + prebuilt engine). The package's postinst installs
+#    and enables the engine service, so we do NOT run engine/install.sh on this path.
+# ---------------------------------------------------------------------------
+step "Building the combined .deb (UI + engine)"
+cargo tauri --version >/dev/null 2>&1 || cargo install tauri-cli --locked || warn "tauri-cli install failed; trying anyway"
+( cd crates/sluice-ui && cargo tauri build --bundles deb )
+DEB="$(ls -t target/release/bundle/deb/*.deb 2>/dev/null | head -1 || true)"
+[[ -n "$DEB" ]] || die "no .deb produced under target/release/bundle/deb/"
+ok "built $(basename "$DEB")"
+
+step "Installing the combined .deb (needs root; the engine service starts via the package)"
+# Pre-seed the owner uid so THIS user owns the engine link (postinst keeps it if already set).
+sudo install -d -m 0755 /etc/sluice
+printf 'SLUICE_OWNER_UID=%s\n' "$(id -u)" | sudo tee /etc/sluice/engine.env >/dev/null
+sudo apt-get install -y "$DEB" 2>/dev/null || { sudo dpkg -i "$DEB" || true; sudo apt-get -f install -y; }
+ok "sluice installed (engine + UI)"
+if systemctl is-active --quiet sluice-engine; then ok "sluice-engine is running"; else warn "sluice-engine not active — check: journalctl -u sluice-engine -n 30"; fi
 
 # ---------------------------------------------------------------------------
 echo -e "\n${GREEN}Sluice installed.${RESET}"
