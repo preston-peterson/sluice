@@ -13,7 +13,7 @@ name = "sluice-engine"
 path = "src/main.rs"
 
 [dependencies]
-aya = "0.13"
+aya = "0.14"
 sluice-common = { path = "../common" }
 sluice-proto = { path = "../../crates/sluice-proto" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time", "sync"] }
