@@ -1,0 +1,23 @@
+# Dependabot — weekly dependency update PRs. The engine crates are detached cargo
+# workspaces, so each is listed separately from the root workspace.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: cargo
+    directory: "/engine/loader"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: cargo
+    directory: "/engine/ebpf"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

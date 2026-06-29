@@ -30,3 +30,6 @@ CLAUDE.md
 
 # Release artifacts (built by scripts/package-release.sh)
 /dist/
+
+# gh-audit reports — local only
+/audits/
