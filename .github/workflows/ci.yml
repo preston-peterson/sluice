@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege: CI only needs to read the repo (F2). No write scopes.
+permissions:
+  contents: read
+
+# A newer push to the same ref cancels the in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The gate: format + lint + test the root workspace on the pinned stable toolchain.
+  check:
+    name: fmt · clippy · test (root workspace)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # protoc (gRPC codegen) + the Tauri/WebKitGTK dev libs sluice-ui links against.
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            protobuf-compiler pkg-config build-essential \
+            libwebkit2gtk-4.1-dev libsoup-3.0-dev librsvg2-dev \
+            libxdo-dev libayatana-appindicator3-dev libssl-dev
+
+      # rustup reads rust-toolchain.toml and installs the pinned 1.89 + rustfmt/clippy.
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace
+
+  # Optional: the eBPF engine builds on a separate nightly toolchain (rust-src + bpf-linker).
+  # Kept non-blocking — a nightly/bpf-linker hiccup must not gate the root workspace.
+  engine:
+    name: build eBPF engine (optional · nightly)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            protobuf-compiler pkg-config build-essential
+
+      # engine/ebpf/rust-toolchain.toml pins nightly; rust-src is needed for -Z build-std=core.
+      - name: Install nightly + rust-src
+        run: rustup toolchain install nightly --component rust-src --component clippy --component rustfmt
+
+      - name: Install bpf-linker
+        run: cargo install bpf-linker --locked
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            engine/ebpf
+            engine/loader
+
+      - name: Build eBPF object
+        run: cd engine/ebpf && cargo build --release
+
+      - name: Build loader
+        run: cd engine/loader && cargo build --release
