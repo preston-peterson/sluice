@@ -86,6 +86,17 @@ else
   cargo install tauri-cli --locked || warn "tauri-cli install failed; run 'cargo install tauri-cli' before 'just package'."
 fi
 
+# 3c. just — the task runner the repo's docs/justfile use ('just check', 'just release-prep', …).
+bold "3c. just (task runner)"
+if have just; then
+  ok "just present: $(just --version 2>/dev/null)"
+elif ! have cargo; then
+  warn "cargo not on PATH yet; re-run setup after 'source \$HOME/.cargo/env' to install just."
+else
+  info "installing just (cargo install just)…"
+  cargo install just --locked || warn "just install failed; the underlying scripts still work standalone (see the justfile)."
+fi
+
 # 4. Sluice engine status — report only (never install/modify the firewall here).
 bold "4. Sluice engine status (report only)"
 if have systemctl && systemctl list-unit-files 2>/dev/null | grep -q '^sluice-engine'; then
