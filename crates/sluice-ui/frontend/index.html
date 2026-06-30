@@ -321,9 +321,15 @@
             <div class="set-row">
               <div>
                 <div class="set-t">Current version</div>
-                <div class="set-d mono" id="set-version">Sluice 0.1.7</div>
+                <div class="set-d mono" id="set-version">Sluice 0.1.8</div>
               </div>
-              <button id="set-check-update" type="button">Check for updates</button>
+              <div class="set-actions">
+                <button id="set-check-update" type="button">Check for updates</button>
+                <button id="set-update-now" type="button" class="hidden">Update now</button>
+              </div>
+            </div>
+            <div class="set-row hidden" id="set-update-row">
+              <div class="set-d" id="set-update-status"></div>
             </div>
             <div class="set-row">
               <div>

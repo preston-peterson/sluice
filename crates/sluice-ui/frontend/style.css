@@ -670,6 +670,9 @@ button:disabled { opacity: 0.5; cursor: default; }
 .set-sect-h { padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 700; }
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
 .set-row:last-child { border-bottom: 0; }
+.set-actions { display: flex; align-items: center; gap: 8px; }
+.set-actions button[disabled] { opacity: 0.5; cursor: default; }
+#set-update-status button { margin-left: 6px; }
 .set-t { font-weight: 600; }
 .set-d { color: var(--muted); font-size: 12px; margin-top: 2px; }
 .set-disclose { margin: 10px 12px; padding: 8px 10px; border: 1px solid var(--pending); border-radius: 8px; color: var(--muted); font-size: 12px; }

@@ -361,10 +361,15 @@ Stopping the service is the universal escape hatch regardless.
 
 ## Updating
 
-There are two ways to update, matching the two install paths.
+**In-app (easiest).** In **Settings → Updates**, click **Check for updates**; if a
+newer release exists, an **Update now** button downloads that release's `.deb`,
+verifies its SHA-256, and installs it via a polkit password prompt (the app never
+runs as root). When it finishes, click **Restart now** to launch the new version.
+This is opt-in and is the only feature that reaches the network. If you'd rather do
+it by hand, the two manual paths below do the same thing.
 
-**Prebuilt package (recommended).** Download the newer release `.deb` and install
-it over the top:
+**Prebuilt package (recommended manual path).** Download the newer release `.deb` and
+install it over the top:
 
 ```bash
 sudo apt install ./sluice_<version>_amd64.deb

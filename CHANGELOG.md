@@ -6,7 +6,14 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **In-app update (opt-in).** When Settings → Updates finds a newer release, an **Update now**
+  button downloads that release's `.deb`, **verifies its SHA-256**, and installs it via polkit
+  (`pkexec`) — user-confirmed — then offers to restart. It's off by default and remains the only
+  feature that reaches the network (SEC-007); the privileged install goes through polkit, never as
+  root (SEC-001). Integrity is checksum-verified against the GitHub release; signed artifacts are a
+  planned follow-up.
 
 ## [0.1.8] — 2026-06-29
 

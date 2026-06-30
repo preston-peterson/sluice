@@ -919,6 +919,190 @@ fn check_for_update() -> UpdateInfo {
     info
 }
 
+/// Pick the `.deb` asset (name + URL) and its `.sha256` sibling URL from a release JSON.
+fn select_deb_assets(v: &serde_json::Value) -> Option<(String, String, String)> {
+    let assets = v.get("assets")?.as_array()?;
+    let mut deb: Option<(String, String)> = None;
+    let mut sha: Option<String> = None;
+    for a in assets {
+        let name = a.get("name").and_then(|n| n.as_str()).unwrap_or("");
+        let url = a
+            .get("browser_download_url")
+            .and_then(|u| u.as_str())
+            .unwrap_or("");
+        if name.is_empty() || url.is_empty() {
+            continue;
+        }
+        if name.ends_with(".deb.sha256") {
+            sha = Some(url.to_string());
+        } else if name.ends_with(".deb") {
+            deb = Some((name.to_string(), url.to_string()));
+        }
+    }
+    let (deb_name, deb_url) = deb?;
+    Some((deb_name, deb_url, sha?))
+}
+
+/// Outcome of an in-app update apply, shipped to the webview.
+#[derive(Serialize)]
+struct UpdateApplyResult {
+    ok: bool,
+    /// Where it ended: "done" on success, otherwise the failing stage.
+    stage: String,
+    message: String,
+    version: String,
+}
+
+/// Download the latest release's `.deb`, verify its SHA-256, and install it via polkit.
+///
+/// SEC-001: the privileged install goes through `pkexec` (polkit) — the app never runs as root.
+/// SEC-007: runs only on an explicit user click; same single `curl` network path as the check.
+/// The SHA-256 is verified BEFORE install and the install is aborted on any mismatch. Integrity is
+/// anchored to the GitHub release over TLS (artifact signing is the stronger follow-up — task #26).
+/// Emits `update-progress` (stage strings) as it goes; never panics (returns a structured result).
+#[tauri::command]
+fn download_and_apply_update(app: tauri::AppHandle) -> UpdateApplyResult {
+    let fail = |stage: &str, msg: String| UpdateApplyResult {
+        ok: false,
+        stage: stage.to_string(),
+        message: msg,
+        version: String::new(),
+    };
+    let step = |stage: &str| {
+        let _ = app.emit("update-progress", stage);
+    };
+
+    // 1. Resolve the .deb + .sha256 assets from the latest release.
+    step("checking");
+    let body = match std::process::Command::new("curl")
+        .args([
+            "-fsSL",
+            "--max-time",
+            "10",
+            "-H",
+            "Accept: application/vnd.github+json",
+            "https://api.github.com/repos/preston-peterson/sluice/releases/latest",
+        ])
+        .output()
+    {
+        Ok(o) if o.status.success() => o.stdout,
+        _ => return fail("checking", "couldn't reach GitHub Releases.".into()),
+    };
+    let json: serde_json::Value = match serde_json::from_slice(&body) {
+        Ok(v) => v,
+        Err(_) => return fail("checking", "couldn't read the release data.".into()),
+    };
+    let version = json
+        .get("tag_name")
+        .and_then(|t| t.as_str())
+        .unwrap_or("")
+        .trim_start_matches('v')
+        .to_string();
+    let (deb_name, deb_url, sha_url) = match select_deb_assets(&json) {
+        Some(t) => t,
+        None => {
+            return fail(
+                "checking",
+                "this release has no installable .deb asset.".into(),
+            )
+        }
+    };
+
+    // 2. Private temp dir (0700).
+    let dir = std::env::temp_dir().join(format!("sluice-update-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    if let Err(e) = std::fs::create_dir_all(&dir) {
+        return fail("download", format!("couldn't create a temp dir: {e}"));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700));
+    }
+    let deb_path = dir.join(&deb_name);
+    let sha_path = dir.join(format!("{deb_name}.sha256"));
+    let cleanup = |dir: &std::path::Path| {
+        let _ = std::fs::remove_dir_all(dir);
+    };
+
+    // 3. Download the package + its checksum.
+    step("downloading");
+    let dl = |url: &str, to: &std::path::Path| -> bool {
+        std::process::Command::new("curl")
+            .args(["-fsSL", "--max-time", "180", "-o"])
+            .arg(to)
+            .arg(url)
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    };
+    if !dl(&deb_url, &deb_path) {
+        cleanup(&dir);
+        return fail("download", "failed to download the update package.".into());
+    }
+    if !dl(&sha_url, &sha_path) {
+        cleanup(&dir);
+        return fail("download", "failed to download the checksum.".into());
+    }
+
+    // 4. Verify SHA-256 (abort hard on mismatch).
+    step("verifying");
+    let verified = std::process::Command::new("sha256sum")
+        .arg("-c")
+        .arg(&sha_path)
+        .current_dir(&dir)
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    if !verified {
+        cleanup(&dir);
+        return fail(
+            "verifying",
+            "checksum verification FAILED — update aborted (the download may be corrupt or tampered with).".into(),
+        );
+    }
+
+    // 5. Install via polkit (prompts for the user's password).
+    step("installing");
+    let status = std::process::Command::new("pkexec")
+        .arg("apt-get")
+        .arg("install")
+        .arg("-y")
+        .arg(&deb_path)
+        .status();
+    cleanup(&dir);
+    match status {
+        Ok(s) if s.success() => UpdateApplyResult {
+            ok: true,
+            stage: "done".into(),
+            message: format!("Sluice {version} installed."),
+            version,
+        },
+        Ok(s) => {
+            let code = s.code().unwrap_or(-1);
+            // pkexec: 126 = not authorized / dialog dismissed, 127 = auth could not be obtained.
+            let msg = if code == 126 || code == 127 {
+                "installation was cancelled (authorization not granted).".to_string()
+            } else {
+                format!(
+                    "the install step failed (exit {code}). You can download it manually instead."
+                )
+            };
+            fail("installing", msg)
+        }
+        Err(e) => fail(
+            "installing",
+            format!("couldn't launch the installer (pkexec): {e}"),
+        ),
+    }
+}
+
+/// Relaunch the app — used after an update is installed, so the new binary takes over.
+#[tauri::command]
+fn restart_app(app: tauri::AppHandle) {
+    app.restart();
+}
+
 /// An app's destinations over time (FR-006), newest activity first.
 #[tauri::command]
 fn app_history(state: State<AppState>, app: String) -> Vec<AppHost> {
@@ -1493,6 +1677,8 @@ fn main() {
             open_url,
             app_version,
             check_for_update,
+            download_and_apply_update,
+            restart_app,
             describe_process
         ])
         .on_window_event(|window, event| match event {
@@ -1729,5 +1915,40 @@ mod tests {
         // Unknown scope falls back to the *narrowest* (app→host), not a broad one.
         assert!(matches!(parse_scope("app_any"), Scope::AppToAny));
         assert!(matches!(parse_scope("nonsense"), Scope::AppToHost));
+    }
+
+    #[test]
+    fn version_compare_is_numeric_not_lexical() {
+        assert!(version_newer("0.1.8", "0.1.7"));
+        assert!(version_newer("0.2.0", "0.1.9"));
+        assert!(version_newer("v0.1.10", "0.1.9")); // 10 > 9 numerically, not "10" < "9"
+        assert!(!version_newer("0.1.7", "0.1.7")); // equal is not newer
+        assert!(!version_newer("0.1.7", "0.1.8")); // older is not newer
+        assert!(!version_newer("", "0.1.7"));
+    }
+
+    #[test]
+    fn deb_assets_are_selected_from_a_release() {
+        let v: serde_json::Value = serde_json::json!({
+            "tag_name": "v0.1.8",
+            "assets": [
+                { "name": "Sluice_0.1.8_amd64.deb.sha256",
+                  "browser_download_url": "https://example/sha" },
+                { "name": "Sluice_0.1.8_amd64.deb",
+                  "browser_download_url": "https://example/deb" },
+                { "name": "source.tar.gz",
+                  "browser_download_url": "https://example/src" }
+            ]
+        });
+        let (name, deb, sha) = select_deb_assets(&v).expect("deb + sha present");
+        assert_eq!(name, "Sluice_0.1.8_amd64.deb");
+        assert_eq!(deb, "https://example/deb");
+        assert_eq!(sha, "https://example/sha");
+
+        // A release with no .deb yields nothing (updater reports it cleanly).
+        let empty = serde_json::json!({ "assets": [
+            { "name": "notes.txt", "browser_download_url": "https://example/n" }
+        ]});
+        assert!(select_deb_assets(&empty).is_none());
     }
 }
