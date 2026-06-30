@@ -368,6 +368,12 @@ runs as root). When it finishes, click **Restart now** to launch the new version
 This is opt-in and is the only feature that reaches the network. If you'd rather do
 it by hand, the two manual paths below do the same thing.
 
+Any update (in-app or manual) is **rollback-protected**: the package snapshots the
+current engine first, and if the new engine fails to attach within ~15s it restores
+the previous, known-good engine rather than leaving the firewall down (only the
+engine rolls back; the app stays updated). Recovery is always
+`sudo systemctl stop sluice-engine`.
+
 **Prebuilt package (recommended manual path).** Download the newer release `.deb` and
 install it over the top:
 

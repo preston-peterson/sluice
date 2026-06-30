@@ -192,6 +192,16 @@ async fn main() -> anyhow::Result<()> {
     let mut sigterm = signal(SignalKind::terminate()).context("install SIGTERM handler")?;
 
     eprintln!("[sluice] draining connection events (Ctrl-C to stop, SIGHUP to reload rules)…");
+    // Readiness marker (consumed by the .deb postinst update health-check / rollback — task #20):
+    // its presence means connect4/connect6 attached (the eBPF verifier passed) and the control
+    // plane is up. /run/sluice is recreated per start (RuntimeDirectory), so a stale marker from a
+    // crashed start can't linger and false-positive the health check. Best-effort.
+    let ready_path =
+        std::env::var("SLUICE_READY").unwrap_or_else(|_| "/run/sluice/engine.ready".to_string());
+    if let Err(e) = std::fs::write(&ready_path, b"ready\n") {
+        eprintln!("[sluice] WARN: couldn't write readiness marker {ready_path}: {e}");
+    }
+
     let mut count: u64 = 0;
     let mut blocked: u64 = 0;
     // Container attribution (cache id→name); only the drain touches it (single task).

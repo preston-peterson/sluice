@@ -43,6 +43,7 @@
           "/usr/lib/sluice/sluice-ebpf": "dist-engine/sluice-ebpf",
           "/usr/lib/systemd/system/sluice-engine.service": "dist-engine/sluice-engine.service"
         },
+        "preInstallScript": "deb/preinst.sh",
         "postInstallScript": "deb/postinst.sh",
         "preRemoveScript": "deb/prerm.sh",
         "postRemoveScript": "deb/postrm.sh"

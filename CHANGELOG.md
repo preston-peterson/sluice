@@ -6,7 +6,14 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **Engine update safety (automatic rollback).** If an update's new engine fails to start — e.g. the
+  eBPF verifier rejects it on a newer kernel — Sluice now rolls back to the previous, known-good
+  engine instead of leaving the firewall down. The package snapshots the current engine before
+  upgrading and restores it if the new one doesn't attach `connect4`/`connect6` within ~15s; only the
+  engine half rolls back (the desktop app stays updated). Recovery remains `sudo systemctl stop
+  sluice-engine`.
 
 ## [0.1.11] — 2026-06-30
 
