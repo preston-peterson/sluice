@@ -8,6 +8,14 @@ follows [Semantic Versioning](https://semver.org/).
 
 Nothing yet.
 
+## [0.1.11] — 2026-06-30
+
+### Changed
+
+- The in-app updater's success state now **replaces** the Check/Update buttons with a highlighted
+  "ready — restart to apply" line and a pulsing **Restart now** button, so it's clear the update
+  applied and what to do next; after the restart the row returns to normal.
+
 ## [0.1.10] — 2026-06-30
 
 ### Changed
@@ -171,7 +179,8 @@ traffic by default.
 - **Local data at rest.** History and configuration are stored with `0600`
   permissions in a `0700` directory.
 
-[Unreleased]: https://github.com/preston-peterson/sluice/compare/v0.1.10...HEAD
+[Unreleased]: https://github.com/preston-peterson/sluice/compare/v0.1.11...HEAD
+[0.1.11]: https://github.com/preston-peterson/sluice/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/preston-peterson/sluice/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/preston-peterson/sluice/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/preston-peterson/sluice/compare/v0.1.7...v0.1.8
