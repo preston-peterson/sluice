@@ -29,6 +29,9 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 anyhow.workspace = true
+# Verify-only minisign (Ed25519) signature check for the in-app updater (#26). Pure Rust — no
+# external `minisign` binary is needed at runtime to verify a release.
+minisign-verify = "0.2"
 
 [build-dependencies]
 tauri-build.workspace = true

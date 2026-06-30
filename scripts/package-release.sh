@@ -61,15 +61,32 @@ DEB_NAME="$(basename "$DEB")"
 echo -e "  ${GREEN}✓${RESET} dist/${DEB_NAME}"
 echo -e "  ${GREEN}✓${RESET} dist/${DEB_NAME}.sha256"
 
+# 3b. Sign the .deb with the offline minisign key (authenticity — the in-app updater verifies this
+#     against the embedded public key BEFORE installing). Required for --publish (no unsigned
+#     releases; the updater refuses a release with no .minisig); optional for a local dist build.
+SIGN_KEY="${SLUICE_MINISIGN_KEY:-$HOME/git/sluice-internal/sluice-minisign.key}"
+if command -v minisign >/dev/null 2>&1 && [[ -f "$SIGN_KEY" ]]; then
+  echo -e "${CYAN}==>${RESET} Signing ${DEB_NAME} (minisign — prompts for the key passphrase)"
+  ( cd dist && minisign -Sm "$DEB_NAME" -s "$SIGN_KEY" -t "Sluice ${VERSION}" )
+  [[ -f "dist/${DEB_NAME}.minisig" ]] || { echo "signing failed: no .minisig produced" >&2; exit 1; }
+  echo -e "  ${GREEN}✓${RESET} dist/${DEB_NAME}.minisig"
+elif [[ $PUBLISH -eq 1 ]]; then
+  echo "refusing to publish an UNSIGNED release: minisign or the signing key is missing ($SIGN_KEY)." >&2
+  echo "  install minisign (sudo apt install minisign) and/or set SLUICE_MINISIGN_KEY." >&2
+  exit 1
+else
+  echo -e "  ${YELLOW}!${RESET} not signed (minisign/key unavailable) — OK for a local build; required for --publish."
+fi
+
 # 4. Optionally publish a GitHub release
 if [[ $PUBLISH -eq 1 ]]; then
   command -v gh >/dev/null 2>&1 || { echo "gh (GitHub CLI) required for --publish" >&2; exit 1; }
   echo -e "${CYAN}==>${RESET} Publishing GitHub release ${TAG}"
   if gh release view "$TAG" >/dev/null 2>&1; then
     echo -e "  ${YELLOW}!${RESET} release ${TAG} already exists — uploading artifacts (clobber)"
-    gh release upload "$TAG" "dist/${DEB_NAME}" "dist/${DEB_NAME}.sha256" --clobber
+    gh release upload "$TAG" "dist/${DEB_NAME}" "dist/${DEB_NAME}.sha256" "dist/${DEB_NAME}.minisig" --clobber
   else
-    gh release create "$TAG" "dist/${DEB_NAME}" "dist/${DEB_NAME}.sha256" \
+    gh release create "$TAG" "dist/${DEB_NAME}" "dist/${DEB_NAME}.sha256" "dist/${DEB_NAME}.minisig" \
       --title "Sluice ${VERSION}" \
       --notes "See CHANGELOG.md for what's in this release."
   fi

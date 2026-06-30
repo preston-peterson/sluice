@@ -14,6 +14,10 @@ follows [Semantic Versioning](https://semver.org/).
   upgrading and restores it if the new one doesn't attach `connect4`/`connect6` within ~15s; only the
   engine half rolls back (the desktop app stays updated). Recovery remains `sudo systemctl stop
   sluice-engine`.
+- **Signed releases (tamper-resistant updates).** Release `.deb`s are now signed with an Ed25519
+  (minisign) key held offline; the in-app updater verifies the signature against an embedded public
+  key **before** installing and refuses an unsigned or tampered package — so it checks authenticity,
+  not just the SHA-256. See SECURITY.md for the public key and a manual-verification command.
 
 ## [0.1.11] — 2026-06-30
 

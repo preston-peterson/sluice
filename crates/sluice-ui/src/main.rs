@@ -943,6 +943,47 @@ fn select_deb_assets(v: &serde_json::Value) -> Option<(String, String, String)> 
     Some((deb_name, deb_url, sha?))
 }
 
+/// Find the detached minisign signature asset (`<deb>.minisig`) URL in a release JSON.
+fn select_sig_asset(v: &serde_json::Value, deb_name: &str) -> Option<String> {
+    let want = format!("{deb_name}.minisig");
+    v.get("assets")?.as_array()?.iter().find_map(|a| {
+        if a.get("name").and_then(|n| n.as_str()) == Some(want.as_str()) {
+            a.get("browser_download_url")
+                .and_then(|u| u.as_str())
+                .map(String::from)
+        } else {
+            None
+        }
+    })
+}
+
+/// The Ed25519 release-signing public key (minisign format). Releases are signed with the matching
+/// secret key, held offline; the updater verifies every downloaded package against this BEFORE
+/// installing — so a tampered `.deb` (even one served with a matching `.sha256`) is rejected.
+const RELEASE_PUBKEY_FILE: &str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/sluice-release.pub"));
+
+/// The base64 key line from the embedded minisign public-key file (skips the comment line).
+fn release_pubkey_b64() -> &'static str {
+    RELEASE_PUBKEY_FILE
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty() && !l.starts_with("untrusted comment"))
+        .unwrap_or("")
+}
+
+/// Verify a downloaded package against its detached minisign signature with the embedded public
+/// key — a pure in-process Ed25519 check (no external `minisign` needed). Err on any problem.
+fn verify_signature(file: &std::path::Path, sig_text: &str) -> Result<(), String> {
+    use minisign_verify::{PublicKey, Signature};
+    let pk = PublicKey::from_base64(release_pubkey_b64())
+        .map_err(|e| format!("bad embedded public key: {e}"))?;
+    let sig = Signature::decode(sig_text).map_err(|e| format!("malformed signature: {e}"))?;
+    let data = std::fs::read(file).map_err(|e| format!("couldn't read the package: {e}"))?;
+    pk.verify(&data, &sig, false)
+        .map_err(|e| format!("signature does not verify: {e}"))
+}
+
 /// Outcome of an in-app update apply, shipped to the webview.
 #[derive(Serialize)]
 struct UpdateApplyResult {
@@ -953,13 +994,14 @@ struct UpdateApplyResult {
     version: String,
 }
 
-/// Download the latest release's `.deb`, verify its SHA-256, and install it via polkit.
+/// Download the latest release's `.deb`, verify its signature + SHA-256, and install it via polkit.
 ///
 /// SEC-001: the privileged install goes through `pkexec` (polkit) — the app never runs as root.
 /// SEC-007: runs only on an explicit user click; same single `curl` network path as the check.
-/// The SHA-256 is verified BEFORE install and the install is aborted on any mismatch. Integrity is
-/// anchored to the GitHub release over TLS (artifact signing is the stronger follow-up — task #26).
-/// Emits `update-progress` (stage strings) as it goes; never panics (returns a structured result).
+/// Authenticity is checked FIRST: the `.deb`'s Ed25519 (minisign) signature is verified against the
+/// embedded public key, and the install is refused on a missing/invalid signature — so a tampered
+/// package is rejected even if its `.sha256` matches. The SHA-256 is then checked for integrity, all
+/// before install. Emits `update-progress` (stage strings); never panics (returns a structured result).
 #[tauri::command]
 fn download_and_apply_update(app: tauri::AppHandle) -> UpdateApplyResult {
     let fail = |stage: &str, msg: String| UpdateApplyResult {
@@ -1007,6 +1049,15 @@ fn download_and_apply_update(app: tauri::AppHandle) -> UpdateApplyResult {
             )
         }
     };
+    let sig_url = match select_sig_asset(&json, &deb_name) {
+        Some(u) => u,
+        None => {
+            return fail(
+                "checking",
+                "this release isn't signed (no .minisig) — refusing to auto-install; use the manual download.".into(),
+            )
+        }
+    };
 
     // 2. Private temp dir (0700).
     let dir = std::env::temp_dir().join(format!("sluice-update-{}", std::process::id()));
@@ -1021,11 +1072,12 @@ fn download_and_apply_update(app: tauri::AppHandle) -> UpdateApplyResult {
     }
     let deb_path = dir.join(&deb_name);
     let sha_path = dir.join(format!("{deb_name}.sha256"));
+    let sig_path = dir.join(format!("{deb_name}.minisig"));
     let cleanup = |dir: &std::path::Path| {
         let _ = std::fs::remove_dir_all(dir);
     };
 
-    // 3. Download the package + its checksum.
+    // 3. Download the package + its checksum + its signature.
     step("downloading");
     let dl = |url: &str, to: &std::path::Path| -> bool {
         std::process::Command::new("curl")
@@ -1044,8 +1096,31 @@ fn download_and_apply_update(app: tauri::AppHandle) -> UpdateApplyResult {
         cleanup(&dir);
         return fail("download", "failed to download the checksum.".into());
     }
+    if !dl(&sig_url, &sig_path) {
+        cleanup(&dir);
+        return fail("download", "failed to download the signature.".into());
+    }
 
-    // 4. Verify SHA-256 (abort hard on mismatch).
+    // 4a. Verify the Ed25519 signature (authenticity) — the strong check, before checksum/install.
+    step("verifying-sig");
+    let sig_text = match std::fs::read_to_string(&sig_path) {
+        Ok(s) => s,
+        Err(e) => {
+            cleanup(&dir);
+            return fail("verifying-sig", format!("couldn't read the signature: {e}"));
+        }
+    };
+    if let Err(e) = verify_signature(&deb_path, &sig_text) {
+        cleanup(&dir);
+        return fail(
+            "verifying-sig",
+            format!(
+                "signature check FAILED — update aborted ({e}). The download may be tampered with."
+            ),
+        );
+    }
+
+    // 4b. Verify SHA-256 (integrity; abort hard on mismatch).
     step("verifying");
     let verified = std::process::Command::new("sha256sum")
         .arg("-c")
@@ -1950,5 +2025,29 @@ mod tests {
             { "name": "notes.txt", "browser_download_url": "https://example/n" }
         ]});
         assert!(select_deb_assets(&empty).is_none());
+    }
+
+    #[test]
+    fn release_signature_verifies_and_rejects_tampering() {
+        use minisign_verify::{PublicKey, Signature};
+        // Throwaway-key fixtures (src/testdata/), signed over the exact bytes of test.data.
+        let pub_b64 = include_str!("testdata/test.pub")
+            .lines()
+            .map(str::trim)
+            .find(|l| !l.is_empty() && !l.starts_with("untrusted comment"))
+            .unwrap();
+        let sig_text = include_str!("testdata/test.minisig");
+        let data: &[u8] = include_bytes!("testdata/test.data");
+
+        let pk = PublicKey::from_base64(pub_b64).unwrap();
+        let sig = Signature::decode(sig_text).unwrap();
+        // Genuine bytes verify; flipping one byte must fail.
+        assert!(pk.verify(data, &sig, false).is_ok());
+        let mut tampered = data.to_vec();
+        tampered[0] ^= 0x01;
+        assert!(pk.verify(&tampered, &sig, false).is_err());
+
+        // The embedded REAL release public key parses, so verification won't break at runtime.
+        assert!(PublicKey::from_base64(release_pubkey_b64()).is_ok());
     }
 }

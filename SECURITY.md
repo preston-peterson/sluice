@@ -105,6 +105,31 @@ Sluice makes **no network calls of its own**. It does not phone home, ship telem
 
 Any future feature that would make network calls will be opt-in and disclosed in the UI.
 
+## Updates and Release Signing
+
+Updates are opt-in and user-initiated — the update check is off by default, and nothing is downloaded or installed without an explicit click.
+
+Release artifacts are **cryptographically signed**, so the in-app updater verifies a download's **authenticity**, not just its integrity:
+
+- Each release `.deb` is signed with an **Ed25519** key (via [minisign](https://jedisct1.github.io/minisign/)); the detached signature ships as the `.minisig` asset alongside the `.deb` and its `.sha256`.
+- The **secret key is held offline** and never appears in the repository or CI. The matching **public key is embedded in the app** (`crates/sluice-ui/sluice-release.pub`) and published here:
+
+  ```
+  RWSn2Bxeyd35sx6sBsoLIO4TsQYVqyMxtCo/WyGddd20bSCp6gmi3P4Q
+  ```
+
+  (minisign key ID `B3F9DDC95E1CD8A7`)
+
+- When you use **Update now**, the updater downloads the `.deb` + `.minisig`, **verifies the signature against the embedded public key first** (in-process, pure Rust — no external tools required), and **refuses to install** on a missing or invalid signature. It then checks the SHA-256 and installs via a polkit prompt — the app never runs as root. A tampered package is rejected even if its checksum was swapped to match.
+
+You can verify a download yourself:
+
+```bash
+minisign -Vm Sluice_<version>_amd64.deb -P RWSn2Bxeyd35sx6sBsoLIO4TsQYVqyMxtCo/WyGddd20bSCp6gmi3P4Q
+```
+
+**Key rotation.** If the signing key is ever lost or compromised, a new public key will be published here and embedded in a new release. Because an older app only trusts the older key, that transition release must be installed manually (downloaded and verified against the new key) once; auto-update resumes afterward.
+
 ## Security Review
 
 The Sluice codebase — the root engine, the unprivileged UI, and the gRPC contract between them — has undergone an adversarial source-level security review against the threat model above. The review examined the privilege boundary and peer-credential gate, every parser that handles untrusted network or kernel input, the nftables rule generation, the webview escaping and CSP, and the quiet-by-default egress posture.
