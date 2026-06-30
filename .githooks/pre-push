@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Sluice pre-push guard — tracked, wired via `core.hooksPath=.githooks` (see scripts/setup.sh).
+# Blocks pushing anything that must never reach the public repo:
+#   1) maintainer-only / internal files   2) forbidden third-party product names
+#   3) AI-vendor strings                   4) obvious secrets
+#
+# Detection patterns use the classic [x] bracket idiom so this guard never matches ITSELF and the
+# sensitive words never appear literally in the tree. Bypass once (at your own risk):
+#   git push --no-verify
+set -uo pipefail
+block=0
+fail() { printf 'pre-push BLOCKED: %s\n' "$1" >&2; block=1; }
+
+# 1) Maintainer-only / internal files must never be tracked (they live outside the repo).
+if git ls-files | grep -iqE '(^|/)[C]LAUDE\.md$|[s]luice-internal|HANDOFF|AGENT_GUARDRAILS'; then
+  fail "a maintainer-only/internal file is tracked — keep it gitignored:"
+  git ls-files | grep -iE '(^|/)[C]LAUDE\.md$|[s]luice-internal|HANDOFF|AGENT_GUARDRAILS' | sed 's/^/    /' >&2
+fi
+
+# 2) Forbidden third-party product names in tracked files.
+if git grep -inI -E '[o]pensnitch|[g]lasswire|[p]ortmaster' -- . ':(exclude).githooks/*' >/dev/null 2>&1; then
+  fail "a forbidden third-party product name is in a tracked file:"
+  git grep -inI -E '[o]pensnitch|[g]lasswire|[p]ortmaster' -- . ':(exclude).githooks/*' | sed 's/^/    /' >&2
+fi
+
+# 3) AI-vendor strings in tracked files (the .gitignore rule that keeps the brief out is allowed).
+if git grep -inI -E '[c]laude|[a]nthropic' -- . ':(exclude).gitignore' ':(exclude).githooks/*' >/dev/null 2>&1; then
+  fail "an AI-vendor string is in a tracked file:"
+  git grep -inI -E '[c]laude|[a]nthropic' -- . ':(exclude).gitignore' ':(exclude).githooks/*' | sed 's/^/    /' >&2
+fi
+
+# 4) Obvious secrets in tracked files.
+if git grep -nI -E 'BEGIN [A-Z ]*PRIVATE KEY|gh[pousr]_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]+' -- . ':(exclude)Cargo.lock' >/dev/null 2>&1; then
+  fail "a possible secret was found in tracked files."
+fi
+
+[ "$block" -eq 0 ] || printf 'Push aborted. Fix the above (or bypass once with: git push --no-verify).\n' >&2
+exit "$block"

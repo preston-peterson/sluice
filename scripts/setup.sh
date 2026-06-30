@@ -97,5 +97,15 @@ else
   warn "  just engine-build && sudo engine/install.sh"
 fi
 
+# 5. Git hooks — wire the tracked pre-push guard (blocks leaking internal files / forbidden strings).
+bold "5. Git hooks (pre-push guard)"
+if [ -d .githooks ]; then
+  chmod +x .githooks/* 2>/dev/null || true
+  git config core.hooksPath .githooks
+  ok "pre-push guard wired (core.hooksPath=.githooks)"
+else
+  warn ".githooks/ not found; pre-push guard not wired."
+fi
+
 bold "Done."
 info "Next: 'just check' (fmt + clippy + tests), then 'just engine-build'."
