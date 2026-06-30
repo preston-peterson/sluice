@@ -16,13 +16,6 @@ Nothing yet.
   "ready — restart to apply" line and a pulsing **Restart now** button, so it's clear the update
   applied and what to do next; after the restart the row returns to normal.
 
-## [0.1.10] — 2026-06-30
-
-### Changed
-
-- Validation release exercising the 0.1.9 in-app updater end-to-end (download → verify → install →
-  restart). No functional changes since 0.1.9.
-
 ## [0.1.9] — 2026-06-30
 
 ### Added
@@ -180,8 +173,7 @@ traffic by default.
   permissions in a `0700` directory.
 
 [Unreleased]: https://github.com/preston-peterson/sluice/compare/v0.1.11...HEAD
-[0.1.11]: https://github.com/preston-peterson/sluice/compare/v0.1.10...v0.1.11
-[0.1.10]: https://github.com/preston-peterson/sluice/compare/v0.1.9...v0.1.10
+[0.1.11]: https://github.com/preston-peterson/sluice/compare/v0.1.9...v0.1.11
 [0.1.9]: https://github.com/preston-peterson/sluice/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/preston-peterson/sluice/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/preston-peterson/sluice/compare/v0.1.6...v0.1.7
