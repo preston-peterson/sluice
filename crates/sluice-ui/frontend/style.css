@@ -672,7 +672,11 @@ button:disabled { opacity: 0.5; cursor: default; }
 .set-row:last-child { border-bottom: 0; }
 .set-actions { display: flex; align-items: center; gap: 8px; }
 .set-actions button[disabled] { opacity: 0.5; cursor: default; }
-#set-update-status button { margin-left: 6px; }
+/* After a successful update: highlight the line + restart button so the eye goes straight to it. */
+.set-d.update-ready { color: var(--accent); font-weight: 600; }
+#set-restart { color: #fff; background: var(--accent); border-color: transparent; font-weight: 600; animation: pulse-attn 1.6s ease-in-out infinite; }
+#set-restart:hover { filter: brightness(1.08); }
+@keyframes pulse-attn { 0%, 100% { box-shadow: 0 0 0 0 rgba(47, 111, 237, 0.5); } 50% { box-shadow: 0 0 0 5px rgba(47, 111, 237, 0); } }
 .set-t { font-weight: 600; }
 .set-d { color: var(--muted); font-size: 12px; margin-top: 2px; }
 .set-disclose { margin: 10px 12px; padding: 8px 10px; border: 1px solid var(--pending); border-radius: 8px; color: var(--muted); font-size: 12px; }
