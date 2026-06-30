@@ -8,6 +8,13 @@ follows [Semantic Versioning](https://semver.org/).
 
 Nothing yet.
 
+## [0.1.10] — 2026-06-30
+
+### Changed
+
+- Validation release exercising the 0.1.9 in-app updater end-to-end (download → verify → install →
+  restart). No functional changes since 0.1.9.
+
 ## [0.1.9] — 2026-06-30
 
 ### Added
@@ -164,7 +171,8 @@ traffic by default.
 - **Local data at rest.** History and configuration are stored with `0600`
   permissions in a `0700` directory.
 
-[Unreleased]: https://github.com/preston-peterson/sluice/compare/v0.1.9...HEAD
+[Unreleased]: https://github.com/preston-peterson/sluice/compare/v0.1.10...HEAD
+[0.1.10]: https://github.com/preston-peterson/sluice/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/preston-peterson/sluice/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/preston-peterson/sluice/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/preston-peterson/sluice/compare/v0.1.6...v0.1.7
