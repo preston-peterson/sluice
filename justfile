@@ -56,6 +56,18 @@ engine-install: engine-build
 geoip:
     bash scripts/fetch-geoip.sh
 
-# Build a release (.deb + checksum into dist/). Add `--publish` to also cut a GitHub release.
+# Release (option C — the normal path): CI builds + drafts, you sign + publish locally.
+#   1) write notes under "## [Unreleased]" in CHANGELOG.md
+#   2) just release-prep X.Y.Z      # bump version + stamp CHANGELOG + commit + tag
+#   3) git push origin main vX.Y.Z  # the Release workflow builds + drafts
+#   4) just sign-release X.Y.Z      # sign locally with the offline key + publish
+release-prep VERSION:
+    bash scripts/release-prep.sh {{VERSION}}
+
+sign-release VERSION:
+    bash scripts/sign-release.sh {{VERSION}}
+
+# All-local fallback: build + sign + (with --publish) cut a release entirely on this machine.
+# Use when CI is unavailable; otherwise prefer the release-prep / sign-release flow above.
 release *ARGS:
     bash scripts/package-release.sh {{ARGS}}

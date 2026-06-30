@@ -389,8 +389,26 @@ after any dependency change.
 
 ## Versioning
 
-The current version lives in `VERSION` (and is mirrored in the app's `tauri.conf.json`).
-Bump it in its own commit when cutting a release; keep `CHANGELOG.md` in step.
+The current version lives in `VERSION` (and is mirrored in the app's `tauri.conf.json` and the
+Settings line). `just release-prep` bumps all three for you; keep `CHANGELOG.md` in step.
+
+## Releasing
+
+Releases are **signed**, and the signing key is held **offline** (never in CI — see SECURITY.md).
+So the build is automated but the signing stays on the maintainer's machine (the "hybrid" flow):
+
+1. Write the release notes under `## [Unreleased]` in `CHANGELOG.md`.
+2. `just release-prep X.Y.Z` — bumps the version, stamps the CHANGELOG into a dated section,
+   commits `release: X.Y.Z`, and tags `vX.Y.Z` (no push).
+3. `git push origin main vX.Y.Z` — pushing the tag triggers the **Release** workflow
+   (`.github/workflows/release.yml`), which builds the engine + UI + `.deb` + `.sha256` and creates
+   a **draft** GitHub release (unsigned).
+4. `just sign-release X.Y.Z` — downloads the draft's `.deb`, verifies the CI checksum, signs it with
+   the offline key (prompts for the passphrase), verifies the signature against
+   `crates/sluice-ui/sluice-release.pub`, uploads the `.minisig`, and **publishes** the release.
+
+The in-app updater only offers a release once it's published *and* signed. If CI is unavailable,
+`just release --publish` does the whole thing locally (build + sign + publish) as a fallback.
 
 ## Dev gotchas
 
