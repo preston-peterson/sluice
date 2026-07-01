@@ -18,6 +18,9 @@ follows [Semantic Versioning](https://semver.org/).
   (minisign) key held offline; the in-app updater verifies the signature against an embedded public
   key **before** installing and refuses an unsigned or tampered package — so it checks authenticity,
   not just the SHA-256. See SECURITY.md for the public key and a manual-verification command.
+- **Visible timestamps.** Every feed row now shows when it happened (top-right; last-seen for
+  coalesced rows, full date on hover), and the Usage/Apps/Destinations drill-down lines gained a
+  last-seen time.
 - **See blocked inbound in the feed.** When inbound enforcement drops a non-allowed incoming
   connection, it now shows as a red **blocked** inbound row instead of being invisible (an
   `nftables` log rule feeds an NFLOG reader in the engine — conntrack can't see drops). A new

@@ -233,6 +233,16 @@ main { flex: 1; display: flex; min-height: 0; }
 /* Known-port chips (DNS, HTTPS, SSH, …): a quiet, outlined chip — de-emphasized vs the
    filled accent NEW badge. */
 .dns-badge,
+/* Visible per-row timestamp (#29): floats right on the row's first line; last-seen for coalesced
+   rows (hover shows the full date). Tabular numerals so a scrolling feed doesn't jitter. */
+.row-time {
+  float: right;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  margin-left: 10px;
+  white-space: nowrap;
+}
 .port-badge {
   font-size: 10px;
   font-weight: 700;
