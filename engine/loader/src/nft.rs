@@ -136,6 +136,13 @@ fn apply(cfg: &InboundConfig) -> std::io::Result<()> {
     if !udp.is_empty() {
         rules.push_str(&format!("    udp dport {{ {} }} accept\n", ports(&udp)));
     }
+    // Log packets about to be dropped to NFLOG so the UI can show BLOCKED inbound (#23). `log` is
+    // non-terminating and only accepted packets leave the chain above, so exactly the to-be-dropped
+    // packets are logged, then the chain's `policy drop` drops them (unchanged).
+    rules.push_str(&format!(
+        "    counter log group {}\n",
+        crate::nflog::NFLOG_GROUP
+    ));
 
     // Atomic replace: add (ensures exists) → delete → add fresh, all in one `nft -f` transaction.
     let ruleset = format!(

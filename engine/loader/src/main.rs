@@ -32,6 +32,7 @@ use std::{
 mod container;
 mod dns;
 mod inbound;
+mod nflog;
 mod nft;
 
 use anyhow::Context as _;
@@ -164,6 +165,36 @@ async fn main() -> anyhow::Result<()> {
             });
         });
     }
+
+    // Dropped-inbound observer (#23): NFLOG packets the enforce ruleset logs → BLOCKED inbound
+    // rows. Idle in observe mode (no log rule then); conntrack NEW can't see drops, so this is the
+    // only signal for inbound that enforcement rejected.
+    {
+        let tx = events_tx.clone();
+        let dns = dns_cache.clone();
+        nflog::spawn(move |ev| {
+            if tx.receiver_count() == 0 {
+                return;
+            }
+            let _ = tx.send(PbConnEvent {
+                pid: 0,
+                uid: 0,
+                dst_ip: ev.peer.to_string(),
+                dst_port: ev.local_port as u32,
+                family: if ev.peer.is_ipv6() { 10 } else { 2 },
+                verdict: VERDICT_BLOCK as u32,
+                process_path: String::new(),
+                comm: String::new(),
+                at_unix_ms: now_ms(),
+                dst_host: dns.get(ev.peer).unwrap_or_default(),
+                process_args: Vec::new(),
+                container: String::new(),
+                inbound: true,
+                protocol: proto_name(ev.proto).to_string(),
+            });
+        });
+    }
+
     match owner_uid() {
         Some(uid) => {
             let uds =

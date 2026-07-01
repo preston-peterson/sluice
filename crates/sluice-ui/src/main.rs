@@ -185,7 +185,11 @@ fn engine_event_to_feed(ev: sluice_proto::ConnEvent, id: u64) -> FeedEvent {
         scope: None,
         duration: None,
         why: if ev.inbound {
-            "inbound (observed)".to_string()
+            if block {
+                "inbound (blocked)".to_string()
+            } else {
+                "inbound (observed)".to_string()
+            }
         } else if block {
             "blocked by rule".to_string()
         } else {
