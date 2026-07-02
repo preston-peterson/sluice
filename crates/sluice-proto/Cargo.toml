@@ -11,7 +11,7 @@ license = "GPL-3.0-or-later"
 publish = false
 
 [dependencies]
-tonic = "0.12"
+tonic = "0.14"
 prost = "0.13"
 
 [build-dependencies]
