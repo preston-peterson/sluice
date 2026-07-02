@@ -6,6 +6,10 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.14] — 2026-07-02
+
 ### Added
 
 - **Bandwidth indicator (GNOME Shell extension).** An optional top-bar network-throughput indicator
@@ -220,7 +224,8 @@ traffic by default.
 - **Local data at rest.** History and configuration are stored with `0600`
   permissions in a `0700` directory.
 
-[Unreleased]: https://github.com/preston-peterson/sluice/compare/v0.1.13...HEAD
+[Unreleased]: https://github.com/preston-peterson/sluice/compare/v0.1.14...HEAD
+[0.1.14]: https://github.com/preston-peterson/sluice/compare/v0.1.13...v0.1.14
 [0.1.13]: https://github.com/preston-peterson/sluice/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/preston-peterson/sluice/compare/v0.1.6...v0.1.12
 [0.1.11]: https://github.com/preston-peterson/sluice/compare/v0.1.9...v0.1.11
