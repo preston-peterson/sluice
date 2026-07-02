@@ -18,6 +18,10 @@ follows [Semantic Versioning](https://semver.org/).
   package (dpkg) or Snap (no network). Expanding an app on the Apps tab now shows an **App info**
   block (path · version · package · description) above the hosts list, so an expanded app is
   genuinely informative instead of just a host list.
+- **Start Sluice at login.** A new **Settings → Startup** toggle registers a per-user XDG autostart
+  entry so the app launches straight to the tray when you log in (`sluice-ui --hidden`). Off by
+  default, unprivileged. The engine (your firewall) already starts on boot independently — this is
+  only the desktop window.
 
 ## [0.1.13] — 2026-07-02
 

@@ -1370,6 +1370,74 @@ fn describe_process(path: String) -> ProcessInfo {
     }
 }
 
+/// Path to the per-user XDG autostart entry that launches the Sluice UI at login (#31).
+fn autostart_desktop_path() -> Option<std::path::PathBuf> {
+    let cfg = std::env::var_os("XDG_CONFIG_HOME")
+        .map(std::path::PathBuf::from)
+        .filter(|p| p.is_absolute())
+        .or_else(|| {
+            std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".config"))
+        })?;
+    Some(cfg.join("autostart").join("sluice-ui.desktop"))
+}
+
+/// The command the autostart entry should run: the installed system binary if present, else the
+/// currently-running executable (so it also works for a from-source / dev build).
+fn autostart_exec() -> String {
+    if std::path::Path::new("/usr/bin/sluice-ui").exists() {
+        return "/usr/bin/sluice-ui".to_string();
+    }
+    std::env::current_exe()
+        .ok()
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "sluice-ui".to_string())
+}
+
+/// Whether Sluice is set to start at login (the autostart entry exists and isn't disabled).
+#[tauri::command]
+fn get_autostart() -> bool {
+    let Some(path) = autostart_desktop_path() else {
+        return false;
+    };
+    match std::fs::read_to_string(&path) {
+        Ok(s) => !s.lines().any(|l| {
+            l.trim()
+                .eq_ignore_ascii_case("X-GNOME-Autostart-enabled=false")
+        }),
+        Err(_) => false,
+    }
+}
+
+/// Enable or disable start-at-login by writing/removing the XDG autostart entry. Unprivileged,
+/// per-user; launches the UI with `--hidden` so it starts in the tray. The engine (the firewall)
+/// autostarts on boot via systemd independently of this.
+#[tauri::command]
+fn set_autostart(enabled: bool) -> Result<(), String> {
+    let path = autostart_desktop_path().ok_or("cannot resolve the XDG config directory")?;
+    if enabled {
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+        }
+        let entry = format!(
+            "[Desktop Entry]\n\
+             Type=Application\n\
+             Name=Sluice\n\
+             Comment=Application firewall & network monitor\n\
+             Exec={} --hidden\n\
+             Icon=sluice-ui\n\
+             Terminal=false\n\
+             X-GNOME-Autostart-enabled=true\n",
+            autostart_exec()
+        );
+        std::fs::write(&path, entry).map_err(|e| e.to_string())?;
+    } else if let Err(e) = std::fs::remove_file(&path) {
+        if e.kind() != std::io::ErrorKind::NotFound {
+            return Err(e.to_string());
+        }
+    }
+    Ok(())
+}
+
 /// Decisions within a time window (FR-007). `since` (Unix ms) = 0 means "all / live".
 #[tauri::command]
 fn history_window(state: State<AppState>, since: i64, limit: Option<u32>) -> Vec<FeedRow> {
@@ -1781,7 +1849,9 @@ fn main() {
             check_for_update,
             download_and_apply_update,
             restart_app,
-            describe_process
+            describe_process,
+            get_autostart,
+            set_autostart
         ])
         .on_window_event(|window, event| match event {
             // Close = hide to tray and keep running (FR-080). Quit from the tray menu to exit.
@@ -1805,6 +1875,11 @@ fn main() {
                     tauri::image::Image::from_bytes(include_bytes!("../icons/icon.png"))
                 {
                     let _ = win.set_icon(icon);
+                }
+                // The window starts hidden (tauri.conf) to avoid a flash; show it now unless we were
+                // launched with --hidden — the login-autostart entry uses that to start in the tray.
+                if !std::env::args().any(|a| a == "--hidden") {
+                    let _ = win.show();
                 }
             }
             // The AppIndicator host can latch onto an empty menu layout if we publish before it
