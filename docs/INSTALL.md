@@ -50,12 +50,17 @@ single package:
    every privileged operation. The UI never runs as root and makes no network
    calls of its own. It keeps its own local history in your home directory.
 
-Both halves ship in **one combined Debian package named `sluice`** — the desktop
+Both halves ship in **one combined Debian package named `sluice-firewall`** — the desktop
 UI plus the **prebuilt** engine (the eBPF object and the loader binary) and the
 engine's systemd unit. Installing that single package sets up both. The
 recommended way is a prebuilt `.deb` from a release, which needs no build
 toolchain at all; the from-source `./install.sh` path builds the very same
 package and installs it.
+
+> The app is still called **Sluice** (menu, window, docs). The Debian *package*
+> is named `sluice-firewall` only to avoid a name clash with an unrelated package
+> in the Ubuntu archive; it `Conflicts`/`Replaces` any older `sluice` package so
+> upgrading cleanly displaces it.
 
 > **Safe by default.** The engine is **default-allow with a denylist**, so a
 > running engine never locks you out of the network — only the destinations you
@@ -106,7 +111,7 @@ For normal use, download the prebuilt Debian package from the latest GitHub
 release and install it with `apt` — **no build toolchain required**:
 
 ```bash
-sudo apt install ./sluice_<version>_amd64.deb
+sudo apt install ./Sluice-Firewall_<version>_amd64.deb
 ```
 
 This is the easiest path and needs **none** of the build prerequisites (no Rust,
@@ -115,7 +120,7 @@ engine ships prebuilt inside the package, and `apt` pulls the runtime libraries
 it depends on automatically (`libwebkit2gtk-4.1-0`, `libgtk-3-0`; it also
 recommends `nftables`, used for inbound enforcement).
 
-The package is a single combined bundle named **`sluice`** — it contains both
+The package is a single combined bundle named **`sluice-firewall`** — it contains both
 halves (the desktop UI and the prebuilt engine + its systemd unit). On install,
 the package's maintainer scripts do all the setup for you:
 
@@ -143,7 +148,7 @@ Run it **as your normal user** — it will `sudo` only where it needs to. The
 script builds both halves from source, stages the freshly-built engine artifacts
 into `crates/sluice-ui/dist-engine/`, builds the **same single combined `.deb`**
 that release users get, and installs it. So the from-source path lands in exactly
-the same place as the prebuilt path — one `sluice` package containing the engine
+the same place as the prebuilt path — one `sluice-firewall` package containing the engine
 + UI, with the same maintainer scripts setting up the service and the owner UID —
 it just compiles everything first. On a fresh machine it also provisions the
 build toolchain (a first run that compiles the eBPF object, the engine, and the
@@ -205,7 +210,7 @@ A full `./install.sh` (from source) runs these phases:
 
 3. **Build the combined `.deb`.** Ensures the Tauri CLI is present
    (`cargo install tauri-cli` if needed) and builds a single Debian package named
-   **`sluice`** with `cargo tauri build --bundles deb`. The package contains the
+   **`sluice-firewall`** with `cargo tauri build --bundles deb`. The package contains the
    desktop UI (the `sluice-ui` binary, a **"Sluice"** application-menu entry, and
    the icons), the prebuilt engine artifacts staged in step 2, and the engine's
    systemd unit. The `.deb` is left in the build tree at
@@ -315,7 +320,7 @@ launch **Sluice** again from the app menu.
 | `/etc/sluice/engine.env` | root | Records the engine's authorized owner UID (`SLUICE_OWNER_UID=`); read by the unit via `EnvironmentFile`. |
 | `/run/sluice/engine.sock` | root | The hardened control socket (dir `0700`, socket `0600`, peer-credential gated to the owner UID or root). |
 | `/var/lib/sluice/rules.json` | root | The persisted rule store (your blocks/allows). |
-| `/usr/bin/sluice-ui` | system | The desktop app binary (installed by the `sluice` package). |
+| `/usr/bin/sluice-ui` | system | The desktop app binary (installed by the `sluice-firewall` package). |
 | `~/.local/share/sluice/` | you | The UI's local history database (SQLite; `0600` in a `0700` directory). |
 
 The engine's rules and the UI's history are deliberately separate — the root
@@ -378,7 +383,7 @@ engine rolls back; the app stays updated). Recovery is always
 install it over the top:
 
 ```bash
-sudo apt install ./sluice_<version>_amd64.deb
+sudo apt install ./Sluice-Firewall_<version>_amd64.deb
 ```
 
 `apt` performs a clean package upgrade. Your data is preserved
@@ -410,7 +415,7 @@ To remove Sluice, run the uninstaller as your normal user:
 ./uninstall.sh
 ```
 
-It removes the `sluice` package (engine + UI) and also cleans up a stale
+It removes the `sluice-firewall` package (engine + UI) and also cleans up a stale
 source-installed engine unit (`/etc/systemd/system/sluice-engine.service`) if one
 is present. Stopping the engine reopens inbound traffic, so by the end the network
 is back to normal. By default the uninstaller is interactive and **prompts before
@@ -434,7 +439,7 @@ sudo apt purge sluice     # Also remove /etc/sluice — but deliberately keeps
                           # purge can't wipe your firewall rules
 ```
 
-- **Always removed:** the `sluice` package (engine + UI) and its systemd unit.
+- **Always removed:** the `sluice-firewall` package (engine + UI) and its systemd unit.
   Stopping the engine on removal reopens inbound traffic.
 - **Your data** (kept unless you choose otherwise): `/var/lib/sluice` (the rule
   store) and `~/.local/share/sluice` (the UI history). Even `apt purge` keeps

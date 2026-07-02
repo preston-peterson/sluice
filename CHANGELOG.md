@@ -6,7 +6,13 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- **Renamed the Debian package to `sluice-firewall`.** The bare `sluice` package name collided with
+  an unrelated package in the Ubuntu archive, so a routine `apt upgrade` could silently replace the
+  app. The package is now `sluice-firewall` and `Conflicts`/`Replaces` the old `sluice` name, so it
+  displaces it cleanly on upgrade. The app itself is unchanged — still called **Sluice** in the menu,
+  window, and docs.
 
 ## [0.1.12] — 2026-07-02
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Sluice",
+  "productName": "Sluice-Firewall",
   "version": "0.1.12",
   "identifier": "dev.sluice.app",
   "build": {
@@ -38,6 +38,9 @@
     "linux": {
       "deb": {
         "recommends": ["nftables"],
+        "conflicts": ["sluice"],
+        "replaces": ["sluice"],
+        "desktopTemplate": "deb/sluice.desktop",
         "files": {
           "/usr/lib/sluice/sluice-engine": "dist-engine/sluice-engine",
           "/usr/lib/sluice/sluice-ebpf": "dist-engine/sluice-ebpf",

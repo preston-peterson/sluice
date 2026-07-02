@@ -125,7 +125,7 @@ Release artifacts are **cryptographically signed**, so the in-app updater verifi
 You can verify a download yourself:
 
 ```bash
-minisign -Vm Sluice_<version>_amd64.deb -P RWSn2Bxeyd35sx6sBsoLIO4TsQYVqyMxtCo/WyGddd20bSCp6gmi3P4Q
+minisign -Vm Sluice-Firewall_<version>_amd64.deb -P RWSn2Bxeyd35sx6sBsoLIO4TsQYVqyMxtCo/WyGddd20bSCp6gmi3P4Q
 ```
 
 **Key rotation.** If the signing key is ever lost or compromised, a new public key will be published here and embedded in a new release. Because an older app only trusts the older key, that transition release must be installed manually (downloaded and verified against the new key) once; auto-update resumes afterward.

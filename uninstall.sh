@@ -12,7 +12,7 @@
 #   ./uninstall.sh --keep    # remove engine + UI, keep all data, no prompts
 #   ./uninstall.sh --help
 #
-# Removed always:  the sluice package (engine service + /usr/lib/sluice + the desktop UI).
+# Removed always:  the sluice-firewall package (engine service + /usr/lib/sluice + the desktop UI).
 # Your data:       /var/lib/sluice (rules) and ~/.local/share/sluice (history).
 # Stopping the engine reopens inbound traffic automatically.
 # =============================================================================
@@ -41,15 +41,18 @@ echo -e "${CYAN}Sluice uninstaller${RESET}"
 # 1. The Sluice package (engine + UI in one). Its prerm stops the engine (reopening inbound),
 #    dpkg removes the files + systemd unit, and postrm cleans up config (on --purge).
 step "Removing the Sluice package (engine + UI)"
-if dpkg -s sluice >/dev/null 2>&1; then
+# The package is named `sluice-firewall` (the bare `sluice` name collides with an unrelated Ubuntu
+# archive package — a pipe tool); tolerate the old `sluice` name on machines from before the rename.
+pkg="sluice-firewall"; dpkg -s sluice-firewall >/dev/null 2>&1 || pkg="sluice"
+if dpkg -s "$pkg" >/dev/null 2>&1; then
   if [[ "$MODE" == purge ]]; then
-    sudo apt-get purge -y sluice 2>/dev/null || sudo dpkg -P sluice || true
+    sudo apt-get purge -y "$pkg" 2>/dev/null || sudo dpkg -P "$pkg" || true
   else
-    sudo apt-get remove -y sluice 2>/dev/null || sudo dpkg -r sluice || true
+    sudo apt-get remove -y "$pkg" 2>/dev/null || sudo dpkg -r "$pkg" || true
   fi
-  ok "sluice package removed (engine stopped, inbound reopened)"
+  ok "$pkg package removed (engine stopped, inbound reopened)"
 else
-  echo "  (sluice package not installed — skipping)"
+  echo "  (sluice-firewall package not installed — skipping)"
 fi
 
 # 2. A source-installed engine (./install.sh --engine writes a unit to /etc/systemd/system).
