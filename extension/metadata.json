@@ -1,0 +1,8 @@
+{
+  "uuid": "sluice-bandwidth@preston-peterson.github.io",
+  "name": "Sluice Bandwidth",
+  "description": "Live network throughput (down/up) in the top bar, with a menu to toggle it, switch units (bytes/bits), pick the interface, open full settings, and open or quit Sluice. Reads /proc/net/dev directly — no network access, no root, and no dependency on Sluice running.",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "settings-schema": "org.gnome.shell.extensions.sluice-bandwidth",
+  "url": "https://github.com/preston-peterson/sluice"
+}

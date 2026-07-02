@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.sluice-bandwidth"
+          path="/org/gnome/shell/extensions/sluice-bandwidth/">
+    <key name="show-rates" type="b">
+      <default>true</default>
+      <summary>Show the indicator content in the top bar</summary>
+      <description>When off, only a small network icon is shown (the menu stays reachable).</description>
+    </key>
+    <key name="display-mode" type="s">
+      <choices>
+        <choice value="text"/>
+        <choice value="graph"/>
+      </choices>
+      <default>"text"</default>
+      <summary>Top-bar display mode</summary>
+      <description>"text" shows down/up rates; "graph" shows a compact up/down sparkline.</description>
+    </key>
+    <key name="units" type="s">
+      <choices>
+        <choice value="bytes"/>
+        <choice value="bits"/>
+      </choices>
+      <default>"bytes"</default>
+      <summary>Rate units</summary>
+      <description>"bytes" (KB/s, MB/s) or "bits" (Kbps, Mbps).</description>
+    </key>
+    <key name="interface" type="s">
+      <default>""</default>
+      <summary>Network interface</summary>
+      <description>Empty means all non-virtual interfaces combined; otherwise a specific interface name.</description>
+    </key>
+    <key name="refresh-interval" type="i">
+      <range min="500" max="5000"/>
+      <default>1000</default>
+      <summary>Refresh interval in milliseconds</summary>
+    </key>
+    <key name="show-down" type="b">
+      <default>true</default>
+      <summary>Show the download (down) rate</summary>
+    </key>
+    <key name="show-up" type="b">
+      <default>true</default>
+      <summary>Show the upload (up) rate</summary>
+    </key>
+    <key name="graph-width" type="i">
+      <range min="40" max="200"/>
+      <default>78</default>
+      <summary>Sparkline width in pixels (graph mode)</summary>
+    </key>
+  </schema>
+</schemalist>

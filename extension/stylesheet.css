@@ -1,0 +1,21 @@
+/* Sluice Bandwidth top-bar indicator. */
+
+.sluice-bw-box {
+    spacing: 6px;
+}
+
+.sluice-bw-text {
+    font-feature-settings: "tnum";
+}
+
+/* The inline ↑/↓ labels next to the sparkline in graph mode. */
+.sluice-bw-mini {
+    font-size: 8.5pt;
+    font-feature-settings: "tnum";
+    text-align: right;
+}
+
+.sluice-bw-graph {
+    margin-top: 3px;
+    margin-bottom: 3px;
+}

@@ -6,7 +6,13 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **Bandwidth indicator (GNOME Shell extension).** An optional top-bar network-throughput indicator
+  under `extension/` — shows live down/up rates as **text** or a compact up/down **sparkline**
+  (↓ green = download, ↑ blue = upload), with a menu to toggle it, switch units (bytes/bits), pick
+  the interface, open Settings, and open or quit Sluice. Standalone: reads `/proc/net/dev` directly
+  (no root, no network, no dependency on Sluice running). Install with `extension/install.sh`.
 
 ## [0.1.13] — 2026-07-02
 
