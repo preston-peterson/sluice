@@ -1902,10 +1902,12 @@ fn main() {
                 {
                     let _ = win.set_icon(icon);
                 }
-                // The window starts hidden (tauri.conf) to avoid a flash; show it now unless we were
-                // launched with --hidden — the login-autostart entry uses that to start in the tray.
-                if !std::env::args().any(|a| a == "--hidden") {
-                    let _ = win.show();
+                // The window is created VISIBLE by default: a deferred first-show breaks WebKitGTK's
+                // window controls on Wayland (laggy/unresponsive min/max/close). For the --hidden
+                // login-autostart entry, hide it after creation so it starts in the tray — a later
+                // tray "Show" reuses the already-initialized surface and stays responsive.
+                if std::env::args().any(|a| a == "--hidden") {
+                    let _ = win.hide();
                 }
             }
             // The AppIndicator host can latch onto an empty menu layout if we publish before it

@@ -6,7 +6,12 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- **Window controls unresponsive on Wayland (regression in 0.1.14).** Starting the window hidden and
+  showing it later (added for start-at-login) tripped a WebKitGTK/Wayland quirk that left
+  minimize/maximize/close laggy. The window is created visible again; start-at-login hides it to the
+  tray *after* creation, so a later "Show" reuses the already-initialized (responsive) surface.
 
 ## [0.1.15] — 2026-07-02
 
