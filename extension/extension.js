@@ -216,7 +216,12 @@ class SluiceBwIndicator extends PanelMenu.Button {
     // ---- menu ------------------------------------------------------------
 
     _buildMenu() {
-        this._rateItem = new PopupMenu.PopupMenuItem('↓ …    ↑ …', {reactive: false});
+        // A titled header (caption + big coloured rates) so the menu reads as a detail panel, not a
+        // second copy of the top-bar indicator.
+        this._headItem = new PopupMenu.PopupMenuItem('', {reactive: false});
+        this._headItem.label.clutter_text.set_markup('<span size="smaller">Network throughput</span>');
+        this.menu.addMenuItem(this._headItem);
+        this._rateItem = new PopupMenu.PopupMenuItem('', {reactive: false});
         this.menu.addMenuItem(this._rateItem);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
@@ -228,7 +233,7 @@ class SluiceBwIndicator extends PanelMenu.Button {
 
         this._displaySub = new PopupMenu.PopupSubMenuMenuItem('Display');
         this._addRadio(this._displaySub, 'display-mode',
-            [['text', 'Text (rates)'], ['graph', 'Graph (sparkline)']]);
+            [['text', 'Text'], ['graph', 'Graph']]);
         this.menu.addMenuItem(this._displaySub);
 
         this._unitsSub = new PopupMenu.PopupSubMenuMenuItem('Units');
@@ -328,16 +333,23 @@ class SluiceBwIndicator extends PanelMenu.Button {
         const showDn = this._settings.get_boolean('show-down');
         const showUp = this._settings.get_boolean('show-up');
 
+        if (this._headItem) {
+            const iface = this._settings.get_string('interface') || 'all physical';
+            this._headItem.label.clutter_text.set_markup(
+                `<span size="smaller" color="#9aa3b5">Network throughput · ${iface}</span>`);
+        }
         if (this._rateItem)
-            this._rateItem.label.text = `↓ ${fmtRate(dn, units)}     ↑ ${fmtRate(up, units)}`;
+            this._rateItem.label.clutter_text.set_markup(
+                `<span color="${DOWN_HEX}">↓</span> <b>${fmtRate(dn, units)}</b>` +
+                `      <span color="${UP_HEX}">↑</span> <b>${fmtRate(up, units)}</b>`);
 
         if (this._label) {
             const parts = [];
             if (showDn)
-                parts.push(`↓ ${fmtRate(dn, units)}`);
+                parts.push(`<span color="${DOWN_HEX}">↓</span> ${fmtRate(dn, units)}`);
             if (showUp)
-                parts.push(`↑ ${fmtRate(up, units)}`);
-            this._label.text = parts.join('   ') || '—';
+                parts.push(`<span color="${UP_HEX}">↑</span> ${fmtRate(up, units)}`);
+            this._label.clutter_text.set_markup(parts.join('   ') || '—');
         }
 
         if (this._graphLabel) {

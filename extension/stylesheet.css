@@ -8,11 +8,14 @@
     font-feature-settings: "tnum";
 }
 
-/* The inline ↑/↓ labels next to the sparkline in graph mode. */
+/* The inline ↑/↓ labels next to the sparkline in graph mode. A fixed min-width (right-aligned,
+   tabular figures) reserves space for the widest rate, so the number changing width doesn't shove
+   the sparkline back and forth. */
 .sluice-bw-mini {
     font-size: 8.5pt;
     font-feature-settings: "tnum";
     text-align: right;
+    min-width: 54px;
 }
 
 .sluice-bw-graph {
