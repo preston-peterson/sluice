@@ -9,7 +9,7 @@ members = [
 # Pinned shared dependencies. Members reference these with `workspace = true` so the whole
 # tree builds against one consistent, pinned set.
 [workspace.dependencies]
-tonic = "0.12"
+tonic = "0.14"
 prost = "0.13"
 tonic-build = "0.12"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "sync", "time", "net"] }
