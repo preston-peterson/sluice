@@ -394,21 +394,24 @@ Settings line). `just release-prep` bumps all three for you; keep `CHANGELOG.md`
 
 ## Releasing
 
-Releases are **signed**, and the signing key is held **offline** (never in CI — see SECURITY.md).
-So the build is automated but the signing stays on the maintainer's machine (the "hybrid" flow):
+Releases are **signed**, the signing key is held **offline**, and the package is **built entirely on
+the maintainer's machine — never on a remote/CI runner**. That's deliberate: you sign (and thereby
+vouch for) exactly the binary you built and can inspect, which a third-party build pipeline can't
+guarantee. Only the final `sign` step is interactive (the key passphrase); everything else is
+scripted.
 
 1. Write the release notes under `## [Unreleased]` in `CHANGELOG.md`.
-2. `just release-prep X.Y.Z` — bumps the version, stamps the CHANGELOG into a dated section,
-   commits `release: X.Y.Z`, and tags `vX.Y.Z` (no push).
-3. `git push origin main vX.Y.Z` — pushing the tag triggers the **Release** workflow
-   (`.github/workflows/release.yml`), which builds the engine + UI + `.deb` + `.sha256` and creates
-   a **draft** GitHub release (unsigned).
-4. `just sign-release X.Y.Z` — downloads the draft's `.deb`, verifies the CI checksum, signs it with
-   the offline key (prompts for the passphrase), verifies the signature against
-   `crates/sluice-ui/sluice-release.pub`, uploads the `.minisig`, and **publishes** the release.
+2. `just release-prep X.Y.Z` — bumps the version (VERSION + `tauri.conf.json` + the Settings line),
+   stamps the CHANGELOG into a dated section, commits `release: X.Y.Z`, and tags `vX.Y.Z` (no push).
+3. `git push origin main vX.Y.Z` — push the code + tag.
+4. `just release` — builds the engine + UI + `.deb` + `.sha256` **locally** and creates a **draft**
+   GitHub release with the (unsigned) artifacts.
+5. `just sign-release X.Y.Z` — signs the local `dist/` `.deb` with the offline key (prompts for the
+   passphrase), verifies the signature against `crates/sluice-ui/sluice-release.pub`, uploads the
+   signed artifacts, and **publishes** the release.
 
-The in-app updater only offers a release once it's published *and* signed. If CI is unavailable,
-`just release --publish` does the whole thing locally (build + sign + publish) as a fallback.
+The in-app updater only offers a release once it's published *and* signed. There is intentionally no
+CI build workflow for releases — the build must be reproducible and inspectable on your own machine.
 
 ## Dev gotchas
 

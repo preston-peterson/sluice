@@ -51,17 +51,18 @@ package: engine-build
 geoip:
     bash scripts/fetch-geoip.sh
 
-# Release (option C): write notes under "## [Unreleased]" in CHANGELOG.md, then run these three:
-#   just release-prep X.Y.Z  ·  git push origin main vX.Y.Z  ·  just sign-release X.Y.Z
+# Release (all local — the package is built on THIS machine, never a remote runner). Write notes
+# under "## [Unreleased]" in CHANGELOG.md, then:
+#   just release-prep X.Y.Z  ·  git push origin main vX.Y.Z  ·  just release  ·  just sign-release X.Y.Z
 
-# Bump version + stamp CHANGELOG + commit + tag a release (then push the tag to build/draft it).
+# Bump version + stamp CHANGELOG + commit + tag a release.
 release-prep VERSION:
     bash scripts/release-prep.sh {{VERSION}}
 
-# Sign the CI-built draft release with the offline key, then publish it.
-sign-release VERSION:
-    bash scripts/sign-release.sh {{VERSION}}
-
-# All-local fallback (build + sign + --publish on this machine). Prefer release-prep/sign-release.
+# Build the release .deb locally + create the (unsigned) draft GitHub release.
 release *ARGS:
     bash scripts/package-release.sh {{ARGS}}
+
+# Sign the locally-built .deb with the offline key, then publish the release.
+sign-release VERSION:
+    bash scripts/sign-release.sh {{VERSION}}

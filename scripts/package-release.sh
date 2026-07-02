@@ -1,96 +1,70 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Sluice — build a release + (optionally) publish it to GitHub
+# Sluice — build the release .deb LOCALLY, then create a DRAFT GitHub release.
 # =============================================================================
-#
-# Builds the combined .deb (desktop UI + the prebuilt engine: eBPF object + loader, plus the
-# systemd unit and install hooks), writes a SHA-256 checksum, and stages both under
-# dist/. The result installs the whole product with no build toolchain on the target.
-# With --publish it creates a GitHub Release tagged v<VERSION> (from the
-# repo VERSION file) and uploads the artifacts — which is what the in-app
-# "Check for updates" reads (the latest release tag).
+# The package is built ONLY on this machine — never on a remote/CI runner — so what you sign is
+# exactly what you built. This step needs no passphrase; run it, then sign with sign-release.sh.
 #
 # Usage:
-#   ./scripts/package-release.sh            # build + checksum into dist/
-#   ./scripts/package-release.sh --publish  # also create/upload the GitHub release
+#   scripts/package-release.sh          # build -> dist/ + create/refresh the DRAFT release
+#   scripts/package-release.sh --no-gh  # just build into dist/ (no GitHub release)
 #
-# Bump the version first by editing VERSION (and crates/sluice-ui/tauri.conf.json
-# so the .deb filename matches), in its own commit.
+# Release flow:
+#   just release-prep X.Y.Z          # bump VERSION/tauri.conf/CHANGELOG + commit + tag
+#   git push origin main vX.Y.Z      # push the code + tag
+#   just release                     # THIS: build the .deb locally + create the draft
+#   just sign-release X.Y.Z          # sign the local build (passphrase) + publish
 # =============================================================================
 set -euo pipefail
-
 GREEN='\033[32m\033[1m'; CYAN='\033[36m\033[1m'; YELLOW='\033[33m\033[1m'; RESET='\033[0m'
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 export PROTOC="${PROTOC:-$(command -v protoc || echo /usr/bin/protoc)}"
 
-PUBLISH=0
-[[ "${1:-}" == "--publish" ]] && PUBLISH=1
-[[ "${1:-}" == "--help" || "${1:-}" == "-h" ]] && { sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
+NO_GH=0
+[[ "${1:-}" == "--no-gh" ]] && NO_GH=1
+[[ "${1:-}" == "--help" || "${1:-}" == "-h" ]] && { sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
 
-VERSION="$(tr -d ' \n' < VERSION)"
-TAG="v${VERSION}"
-echo -e "${CYAN}Packaging Sluice ${TAG}${RESET}"
+VERSION="$(tr -d ' \n' < VERSION)"; TAG="v${VERSION}"
+echo -e "${CYAN}Building Sluice ${TAG} locally${RESET}"
 
-# 1. Build the engine (eBPF object on nightly + the host loader) and stage the PREBUILT
-#    artifacts where the Tauri deb 'files' map can find them. This is what makes the release
-#    deb install on a machine with no build toolchain — the engine ships prebuilt inside it.
+# 1. Engine (eBPF object on nightly + the host loader), staged where the .deb bundles it.
 echo -e "${CYAN}==>${RESET} Building the engine (eBPF object + loader)"
 command -v bpf-linker >/dev/null 2>&1 || { echo "bpf-linker required to build the eBPF object: cargo install bpf-linker" >&2; exit 1; }
 ( cd engine/ebpf && cargo build --release )      # rust-toolchain.toml pins nightly here
 ( cd engine/loader && cargo build --release )
-STAGE="crates/sluice-ui/dist-engine"
-mkdir -p "$STAGE"
+STAGE="crates/sluice-ui/dist-engine"; mkdir -p "$STAGE"
 install -m 0755 engine/loader/target/release/sluice-engine                 "$STAGE/sluice-engine"
 install -m 0644 engine/ebpf/target/bpfel-unknown-none/release/sluice-ebpf  "$STAGE/sluice-ebpf"
 install -m 0644 engine/sluice-engine.service                               "$STAGE/sluice-engine.service"
-echo -e "  ${GREEN}✓${RESET} staged engine artifacts → $STAGE"
+echo -e "  ${GREEN}✓${RESET} staged engine artifacts"
 
-# 2. Build the combined .deb (UI + the staged engine, with the install/remove hooks)
+# 2. Combined .deb (UI + the staged engine + install/remove hooks).
 echo -e "${CYAN}==>${RESET} Building the combined .deb (UI + engine)"
 cargo tauri --version >/dev/null 2>&1 || cargo install tauri-cli --locked
 ( cd crates/sluice-ui && cargo tauri build --bundles deb )
 DEB="$(ls -t target/release/bundle/deb/*.deb 2>/dev/null | head -1 || true)"
 [[ -n "$DEB" ]] || { echo "no .deb produced" >&2; exit 1; }
 
-# 3. Stage under dist/ with a checksum
-mkdir -p dist
-cp -f "$DEB" dist/
-DEB_NAME="$(basename "$DEB")"
+# 3. Stage under dist/ with a checksum.
+mkdir -p dist; cp -f "$DEB" dist/; DEB_NAME="$(basename "$DEB")"
 ( cd dist && sha256sum "$DEB_NAME" > "${DEB_NAME}.sha256" )
 echo -e "  ${GREEN}✓${RESET} dist/${DEB_NAME}"
 echo -e "  ${GREEN}✓${RESET} dist/${DEB_NAME}.sha256"
 
-# 3b. Sign the .deb with the offline minisign key (authenticity — the in-app updater verifies this
-#     against the embedded public key BEFORE installing). Required for --publish (no unsigned
-#     releases; the updater refuses a release with no .minisig); optional for a local dist build.
-SIGN_KEY="${SLUICE_MINISIGN_KEY:-$HOME/git/sluice-internal/sluice-minisign.key}"
-if command -v minisign >/dev/null 2>&1 && [[ -f "$SIGN_KEY" ]]; then
-  echo -e "${CYAN}==>${RESET} Signing ${DEB_NAME} (minisign — prompts for the key passphrase)"
-  ( cd dist && minisign -Sm "$DEB_NAME" -s "$SIGN_KEY" -t "Sluice ${VERSION}" )
-  [[ -f "dist/${DEB_NAME}.minisig" ]] || { echo "signing failed: no .minisig produced" >&2; exit 1; }
-  echo -e "  ${GREEN}✓${RESET} dist/${DEB_NAME}.minisig"
-elif [[ $PUBLISH -eq 1 ]]; then
-  echo "refusing to publish an UNSIGNED release: minisign or the signing key is missing ($SIGN_KEY)." >&2
-  echo "  install minisign (sudo apt install minisign) and/or set SLUICE_MINISIGN_KEY." >&2
-  exit 1
-else
-  echo -e "  ${YELLOW}!${RESET} not signed (minisign/key unavailable) — OK for a local build; required for --publish."
-fi
-
-# 4. Optionally publish a GitHub release
-if [[ $PUBLISH -eq 1 ]]; then
-  command -v gh >/dev/null 2>&1 || { echo "gh (GitHub CLI) required for --publish" >&2; exit 1; }
-  echo -e "${CYAN}==>${RESET} Publishing GitHub release ${TAG}"
+# 4. Create/refresh a DRAFT release with the .deb + .sha256 (UNSIGNED). Never published here — a
+#    release goes live only when sign-release.sh signs the local build and flips the draft.
+if [[ $NO_GH -eq 0 ]]; then
+  command -v gh >/dev/null 2>&1 || { echo "gh (GitHub CLI) required (or run with --no-gh)" >&2; exit 1; }
+  echo -e "${CYAN}==>${RESET} Creating the DRAFT release ${TAG}"
   if gh release view "$TAG" >/dev/null 2>&1; then
-    echo -e "  ${YELLOW}!${RESET} release ${TAG} already exists — uploading artifacts (clobber)"
-    gh release upload "$TAG" "dist/${DEB_NAME}" "dist/${DEB_NAME}.sha256" "dist/${DEB_NAME}.minisig" --clobber
+    gh release upload "$TAG" "dist/${DEB_NAME}" "dist/${DEB_NAME}.sha256" --clobber
   else
-    gh release create "$TAG" "dist/${DEB_NAME}" "dist/${DEB_NAME}.sha256" "dist/${DEB_NAME}.minisig" \
-      --title "Sluice ${VERSION}" \
-      --notes "See CHANGELOG.md for what's in this release."
+    gh release create "$TAG" "dist/${DEB_NAME}" "dist/${DEB_NAME}.sha256" \
+      --draft --title "Sluice ${VERSION}" \
+      --notes "See CHANGELOG.md. DRAFT until signed + published locally (scripts/sign-release.sh)."
   fi
-  echo -e "  ${GREEN}✓${RESET} published ${TAG}"
+  echo -e "  ${GREEN}✓${RESET} draft ${TAG} ready"
+  echo -e "\nNext (the one interactive step): ${CYAN}just sign-release ${VERSION}${RESET}"
 else
-  echo -e "\nNot published. Re-run with ${CYAN}--publish${RESET} to create the GitHub release."
+  echo -e "\nBuilt into dist/ only (--no-gh)."
 fi

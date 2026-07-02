@@ -112,7 +112,7 @@ Updates are opt-in and user-initiated — the update check is off by default, an
 Release artifacts are **cryptographically signed**, so the in-app updater verifies a download's **authenticity**, not just its integrity:
 
 - Each release `.deb` is signed with an **Ed25519** key (via [minisign](https://jedisct1.github.io/minisign/)); the detached signature ships as the `.minisig` asset alongside the `.deb` and its `.sha256`.
-- The **secret key is held offline** and never appears in the repository or CI. The matching **public key is embedded in the app** (`crates/sluice-ui/sluice-release.pub`) and published here:
+- The **secret key is held offline** and never appears in the repository or CI. Release packages are also **built locally on the maintainer's machine, not on a remote/CI runner**, so the signed artifact is exactly the one that was built and can be inspected — the signature isn't vouching for a build produced elsewhere. The matching **public key is embedded in the app** (`crates/sluice-ui/sluice-release.pub`) and published here:
 
   ```
   RWSn2Bxeyd35sx6sBsoLIO4TsQYVqyMxtCo/WyGddd20bSCp6gmi3P4Q
