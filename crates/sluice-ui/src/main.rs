@@ -1294,8 +1294,28 @@ struct ProcessInfo {
     name: String,
     path: String,
     package: Option<String>,
+    version: Option<String>,
     summary: String,
     source: String,
+}
+
+/// The app/binary version, resolved from LOCAL sources only (no network, SEC-007): the owning dpkg
+/// package's `${Version}`, or a Snap's version from `snap list`. `None` when it can't be determined.
+fn resolve_version(path: &str, package: &Option<String>) -> Option<String> {
+    if path.starts_with("/snap/") {
+        // /snap/<name>/<rev>/... — the human version comes from `snap list <name>`.
+        let snap = path.split('/').nth(2)?;
+        let ver = run_stdout("snap", &["list", snap])
+            .and_then(|o| o.lines().nth(1).map(|l| l.to_string()))
+            .and_then(|l| l.split_whitespace().nth(1).map(|s| s.to_string()))
+            .filter(|s| !s.is_empty())?;
+        return Some(format!("{ver} (snap)"));
+    }
+    package
+        .as_ref()
+        .and_then(|p| run_stdout("dpkg-query", &["-W", "-f=${Version}", "--", p]))
+        .and_then(|o| o.lines().next().map(|l| l.trim().to_string()))
+        .filter(|s| !s.is_empty())
 }
 
 #[tauri::command]
@@ -1338,10 +1358,13 @@ fn describe_process(path: String) -> ProcessInfo {
         (format!("No local description found for {name}."), "none")
     };
 
+    let version = resolve_version(&path, &package);
+
     ProcessInfo {
         name,
         path,
         package,
+        version,
         summary,
         source: source.to_string(),
     }

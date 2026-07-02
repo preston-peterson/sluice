@@ -13,6 +13,11 @@ follows [Semantic Versioning](https://semver.org/).
   (↓ green = download, ↑ blue = upload), with a menu to toggle it, switch units (bytes/bits), pick
   the interface, open Settings, and open or quit Sluice. Standalone: reads `/proc/net/dev` directly
   (no root, no network, no dependency on Sluice running). Install with `extension/install.sh`.
+- **App version + richer Apps-tab detail.** Each app now shows its **version** — a pill next to the
+  name on the Apps tab, and a Version line on the Security card — resolved locally from the owning
+  package (dpkg) or Snap (no network). Expanding an app on the Apps tab now shows an **App info**
+  block (path · version · package · description) above the hosts list, so an expanded app is
+  genuinely informative instead of just a host list.
 
 ## [0.1.13] — 2026-07-02
 
