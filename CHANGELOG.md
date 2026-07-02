@@ -6,6 +6,10 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.16] — 2026-07-02
+
 ### Fixed
 
 - **Window controls unresponsive on Wayland (regression in 0.1.14).** Starting the window hidden and
@@ -240,7 +244,8 @@ traffic by default.
 - **Local data at rest.** History and configuration are stored with `0600`
   permissions in a `0700` directory.
 
-[Unreleased]: https://github.com/preston-peterson/sluice/compare/v0.1.15...HEAD
+[Unreleased]: https://github.com/preston-peterson/sluice/compare/v0.1.16...HEAD
+[0.1.16]: https://github.com/preston-peterson/sluice/compare/v0.1.15...v0.1.16
 [0.1.15]: https://github.com/preston-peterson/sluice/compare/v0.1.14...v0.1.15
 [0.1.14]: https://github.com/preston-peterson/sluice/compare/v0.1.13...v0.1.14
 [0.1.13]: https://github.com/preston-peterson/sluice/compare/v0.1.12...v0.1.13
