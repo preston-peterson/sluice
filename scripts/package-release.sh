@@ -57,6 +57,12 @@ if [[ $NO_GH -eq 0 ]]; then
   command -v gh >/dev/null 2>&1 || { echo "gh (GitHub CLI) required (or run with --no-gh)" >&2; exit 1; }
   echo -e "${CYAN}==>${RESET} Creating the DRAFT release ${TAG}"
   if gh release view "$TAG" >/dev/null 2>&1; then
+    # NEVER touch a PUBLISHED release — clobbering its signed artifacts would break the signature.
+    # (Bump the version first; a live release is immutable here.)
+    if [[ "$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null)" != "true" ]]; then
+      echo "refusing to modify the PUBLISHED release ${TAG} — bump the version first (VERSION=${VERSION})." >&2
+      exit 1
+    fi
     gh release upload "$TAG" "dist/${DEB_NAME}" "dist/${DEB_NAME}.sha256" --clobber
   else
     gh release create "$TAG" "dist/${DEB_NAME}" "dist/${DEB_NAME}.sha256" \
