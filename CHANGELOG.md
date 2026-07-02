@@ -6,7 +6,14 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- **UI could freeze after 0.1.14 ("Sluice Is Not Responding").** The per-app version lookup added in
+  0.1.14 ran on the UI thread and shelled out to `dpkg`/`whatis`/`snap` for every app and security
+  event — a busy Apps/Security view could stall the window. The lookup now runs off the main thread.
+- **Duplicate Sluice windows / tray icons.** Sluice had no single-instance guard, so a second launch
+  (app menu, login autostart, or the post-update restart) could start a **second** `sluice-ui`
+  process. A second launch now just focuses the running window.
 
 ## [0.1.14] — 2026-07-02
 

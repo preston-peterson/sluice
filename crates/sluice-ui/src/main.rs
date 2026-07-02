@@ -1318,8 +1318,24 @@ fn resolve_version(path: &str, package: &Option<String>) -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
+/// Async wrapper: the lookup shells out to dpkg/whatis/snap (blocking), and it's now called for
+/// every app + security row — running it on the UI thread froze the app (#34). Run it on the
+/// blocking pool so the main thread stays responsive.
 #[tauri::command]
-fn describe_process(path: String) -> ProcessInfo {
+async fn describe_process(path: String) -> ProcessInfo {
+    tauri::async_runtime::spawn_blocking(move || describe_process_blocking(path))
+        .await
+        .unwrap_or_else(|_| ProcessInfo {
+            name: String::new(),
+            path: String::new(),
+            package: None,
+            version: None,
+            summary: String::new(),
+            source: "none".to_string(),
+        })
+}
+
+fn describe_process_blocking(path: String) -> ProcessInfo {
     let name = basename(&path).to_string();
 
     let curated = CURATED_PROCESSES
@@ -1812,6 +1828,16 @@ fn main() {
     let bridge_history = Arc::clone(&history);
 
     tauri::Builder::default()
+        // Single-instance guard (#34): a second launch (app menu, login autostart, post-update
+        // restart) focuses the running window instead of spawning a duplicate sluice-ui / tray icon.
+        // Must be the first plugin registered.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.show();
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_notification::init())
         .manage(AppState {
             history,
